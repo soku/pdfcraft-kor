@@ -1906,8 +1906,14 @@ impl PdfCraftApp {
         self.ask_one(pickers::Ask::File(dialog), None, move |app, path| {
             let path = path.to_string_lossy().into_owned();
             let before = app.views.len();
+            let previous_token = app.next_open_token;
             app.open_path(&path);
-            if let Some(prompt) = app.password_prompt.as_mut().filter(|p| p.path.as_deref() == Some(path.as_str())) {
+            if app.next_open_token != previous_token {
+                // The worker will run the command after opening (or after password entry).
+                if let Some(pending) = app.pending_opens.iter_mut().find(|p| p.token == app.next_open_token) {
+                    pending.then = Some(command);
+                }
+            } else if let Some(prompt) = app.password_prompt.as_mut().filter(|p| p.path.as_deref() == Some(path.as_str())) {
                 // Encrypted: the tool runs once the password is in.
                 prompt.then = Some(command);
             } else if app.views.len() > before && app.active.is_some() {
