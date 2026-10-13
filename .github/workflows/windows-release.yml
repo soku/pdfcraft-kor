@@ -1,0 +1,61 @@
+name: Windows release (fork)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Source tag or commit to build
+        default: v0.7.1
+        required: true
+        type: string
+  push:
+    branches: [build/windows-release]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_BUILD_JOBS: 2
+      PDFCRAFT_REQUIRE_WINRES: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || 'v0.7.1' }}
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: fork-windows-x64-release
+      - name: Install installer tools
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed' }
+      - name: Build and package Windows x64
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch x64
+      - name: Record source and checksums
+        shell: pwsh
+        run: |
+          git rev-parse HEAD | Set-Content dist/release/SOURCE-COMMIT.txt
+          Get-ChildItem dist/release -File | Where-Object { $_.Extension -in '.zip', '.msi' } | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Set-Content dist/release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pdfcraft-windows-x64
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
