@@ -90,7 +90,7 @@ fn a_crashed_session_is_offered_and_recovered_unsaved() {
     h.get_by_label("Recover unsaved documents?");
     h.get_by_label("work.pdf");
     h.get_by_label("Recover").click();
-    h.run_steps(4);
+    wait_for_recovery(&mut h, |app| app.views.len() == 1);
     let app = h.state();
     assert_eq!(app.views.len(), 1);
     let doc = app.session.get(app.views[0].id).unwrap();
@@ -301,7 +301,7 @@ fn missing_corrupt_or_mismatched_metadata_recovers_the_snapshot_without_an_origi
         }
         let mut h = harness(s.clone());
         h.get_by_label("Recover").click();
-        h.run_steps(4);
+        wait_for_recovery(&mut h, |app| app.views.len() == 1);
         let app = h.state();
         assert_eq!(app.views.len(), 1, "{case}");
         let doc = app.session.get(app.views[0].id).unwrap();
