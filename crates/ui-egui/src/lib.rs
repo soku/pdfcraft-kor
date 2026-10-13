@@ -534,6 +534,10 @@ pub struct PdfCraftApp {
     pub flatten_fill_sign_on_save: bool,
     /// Point size for new Fill & Sign text and dates, kept across launches.
     pub fill_text_size: f64,
+    pub fill_text_font: pdfcraft_engine::OverlayFont,
+    pub fill_system_font: Option<fill_fonts::SelectedFont>,
+    pub fill_font_error: Option<String>,
+    pub fill_font_search: String,
     pub dialog: Option<Dialog>,
     /// How to ask for the latest release (the desktop app sets it; see `updates`).
     pub update_source: Option<updates::UpdateSource>,
@@ -876,6 +880,10 @@ impl PdfCraftApp {
             ui_scale_applied: None,
             flatten_fill_sign_on_save: false,
             fill_text_size: fill_sign::TEXT_SIZE,
+            fill_text_font: Default::default(),
+            fill_system_font: None,
+            fill_font_error: None,
+            fill_font_search: String::new(),
             dialog: None,
             update_source: None,
             updates: updates::Updates::default(),
@@ -1999,7 +2007,7 @@ impl PdfCraftApp {
     /// Serialize the user's persistent state (recent files, theme). Local only.
     pub fn persist(&self) -> String {
         let trusted: Vec<String> = self.session.trusted_certificates().iter().map(pdfcraft_engine::sign::x509::to_pem).collect();
-        serde_json::json!({
+        let mut saved = serde_json::json!({
             "docking": self.docking,
             "docking_left_open": self.left_open,
             "docking_right": self.right,
@@ -2023,6 +2031,7 @@ impl PdfCraftApp {
             "ui_scale": self.ui_scale,
             "flatten_fill_sign": self.flatten_fill_sign_on_save,
             "fill_text_size": self.fill_text_size,
+            "fill_text_font": self.fill_text_font.resource(),
             "date_format": self.session.date_format(),
             // Null follows the interface language.
             "date_language": self.session.date_language(),
@@ -2057,8 +2066,13 @@ impl PdfCraftApp {
             "combine_zoom": self.combine_zoom,
             "comments_panel_closed": self.comments_panel_closed,
             "right_panel_closed": self.right_panel_closed,
-        })
-        .to_string()
+        });
+        saved["fill_system_font"] = self
+            .fill_system_font
+            .as_ref()
+            .map(|f| serde_json::json!({"path": f.face.path, "index": f.face.index, "name": f.face.name}))
+            .unwrap_or(serde_json::Value::Null);
+        saved.to_string()
     }
 
     /// Restore state written by `persist`. Unknown or malformed data is ignored.
@@ -2129,6 +2143,19 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["flatten_fill_sign"].as_bool() {
             self.flatten_fill_sign_on_save = on;
+        }
+        if let (Some(path), Some(name), Some(index)) = (
+            v["fill_system_font"]["path"].as_str(),
+            v["fill_system_font"]["name"].as_str(),
+            v["fill_system_font"]["index"].as_u64().and_then(|n| u32::try_from(n).ok()),
+        ) {
+            match fill_fonts::SelectedFont::load(pdfcraft_fonts::installed::Face { path: path.into(), index, name: name.into() }) {
+                Ok(font) => self.fill_system_font = Some(font),
+                Err(error) => self.fill_font_error = Some(error),
+            }
+        }
+        if let Some(font) = v["fill_text_font"].as_str() {
+            self.fill_text_font = pdfcraft_engine::OverlayFont::from_resource(font);
         }
         if let Some(size) = v["fill_text_size"].as_f64().and_then(fill_sign::valid_text_size) {
             self.fill_text_size = size;
@@ -2221,6 +2248,24 @@ impl PdfCraftApp {
     pub fn set_option(&mut self, key: &str, value: &str) -> Result<(), String> {
         let view = self.active.and_then(|i| self.views.get_mut(i));
         match (key, view) {
+            ("fill_system_font", _) => {
+                let fonts = pdfcraft_fonts::installed::discover();
+                let face = fonts.into_iter().find(|f| f.name == value).ok_or("installed font not found")?;
+                self.fill_system_font = Some(fill_fonts::SelectedFont::load(face)?);
+                self.fill_font_error = None;
+            }
+            ("fill_text_font", _) => {
+                self.fill_system_font = None;
+                self.fill_text_font = match value {
+                    "Helvetica" | "Helv" => pdfcraft_engine::OverlayFont::Helvetica,
+                    "Times-Roman" | "TiRo" => pdfcraft_engine::OverlayFont::Times,
+                    "Courier" | "Cour" => pdfcraft_engine::OverlayFont::Courier,
+                    _ => return Err("font must be Helvetica, Times-Roman, or Courier".into()),
+                };
+            }
+            ("fill_text_size", _) => {
+                self.fill_text_size = value.parse().ok().and_then(fill_sign::valid_text_size).ok_or("font size must be 4–300 pt")?;
+            }
             ("language", _) => {
                 let language = i18n::normalize_pref(value).ok_or_else(|| {
                     let codes: Vec<&str> = std::iter::once(i18n::AUTO).chain(i18n::Lang::all().map(i18n::Lang::code)).collect();
@@ -2899,3 +2944,5 @@ impl PdfCraftApp {
         }
     }
 }
+
+pub mod fill_fonts;

@@ -202,6 +202,16 @@ fn rg_stroke(c: Rgb) -> String {
     format!("{} {} {} RG\n", n(c[0]), n(c[1]), n(c[2]))
 }
 
+pub(crate) fn text_font(d: &Dict) -> crate::OverlayFont {
+    let da = d.get(b"DA").and_then(|o| o.as_string()).map(|s| String::from_utf8_lossy(&s.bytes).into_owned()).unwrap_or_default();
+    da.split_whitespace()
+        .collect::<Vec<_>>()
+        .windows(3)
+        .rfind(|w| w[2] == "Tf")
+        .map(|w| crate::OverlayFont::from_resource(w[0].trim_start_matches('/')))
+        .unwrap_or_default()
+}
+
 /// `/DA` of a text box: (text colour, font size). Defaults to black 12 pt.
 pub fn parse_da(d: &Dict) -> (Rgb, f64) {
     let da = d.get(b"DA").and_then(|o| o.as_string()).map(|s| String::from_utf8_lossy(&s.bytes).into_owned()).unwrap_or_default();
@@ -637,6 +647,8 @@ pub fn build(d: &Dict) -> Option<Stream> {
             }
         }
         b"FreeText" => {
+            let selected_font = text_font(d);
+            let metrics = selected_font.metrics();
             let (text_color, size) = parse_da(d);
             let bg = stroke;
             let bw = if d.contains(b"BS") || d.contains(b"Border") { border_width(d) } else { 0.0 };
@@ -703,11 +715,11 @@ pub fn build(d: &Dict) -> Option<Stream> {
             ));
             let mut out = c.into_bytes();
             let mut y = rect[3] - pad - size * 0.9;
-            for line in wrap(&text, size, width) {
+            for line in pdfcraft_fonts::wrap_with(&text, size, width, |s, size| metrics.text_width(s, size)) {
                 if y < rect[1] - size {
                     break;
                 }
-                let lw = text_width(&line, size);
+                let lw = metrics.text_width(&line, size);
                 let x = match q {
                     1 => rect[0] + pad + (width - lw) / 2.0,
                     2 => rect[2] - pad - lw,
@@ -722,7 +734,7 @@ pub fn build(d: &Dict) -> Option<Stream> {
             let mut font = Dict::new();
             font.set(b"Type".to_vec(), Object::name("Font"));
             font.set(b"Subtype".to_vec(), Object::name("Type1"));
-            font.set(b"BaseFont".to_vec(), Object::name("Helvetica"));
+            font.set(b"BaseFont".to_vec(), Object::name(selected_font.base_name()));
             font.set(b"Encoding".to_vec(), Object::name("WinAnsiEncoding"));
             let mut fonts = Dict::new();
             fonts.set(b"Helv".to_vec(), Object::Dict(font));

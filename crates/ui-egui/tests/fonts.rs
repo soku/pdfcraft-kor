@@ -305,3 +305,28 @@ fn primary_ui_fonts_cover_latin_and_cyrillic_catalogs() {
         }
     }
 }
+
+/// Korean file names must render even when the interface is English.
+#[test]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn korean_tab_names_have_glyphs_in_every_family() {
+    if std::env::var_os("PDFCRAFT_SYSTEM_FONTS").is_some_and(|v| v == "0") {
+        return;
+    }
+    for cjk in [theme::CjkPreference::Default, theme::CjkPreference::SimplifiedChinese, theme::CjkPreference::TraditionalChinese] {
+        let defs = theme::installed_font_definitions(cjk);
+        for stack in defs.families.values() {
+            if cjk != theme::CjkPreference::Default
+                && pdfcraft_fonts::ui_chinese_fonts().is_empty()
+                && let Some(chinese) = stack.iter().position(|name| name == theme::SYSTEM_FALLBACK)
+            {
+                let korean = stack.iter().position(|name| name == theme::SYSTEM_KOREAN_FALLBACK).expect("Hangul fallback");
+                assert!(chinese < korean, "Chinese glyphs must prefer the Chinese face");
+            }
+        }
+        let mut fonts = Fonts::new(TextOptions::default(), defs);
+        for id in families() {
+            assert!(fonts.has_glyphs(&id, "한글_문서_가나다힣_한.pdf"), "{id:?}: Korean filename glyphs missing");
+        }
+    }
+}

@@ -346,3 +346,5 @@ mod tests {
         assert!(lines.len() > 3 && lines.iter().all(|l| cjk_width(l, 10.0) <= 45.0), "{lines:?}");
     }
 }
+
+pub mod installed;

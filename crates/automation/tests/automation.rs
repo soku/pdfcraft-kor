@@ -145,6 +145,32 @@ fn autotag_preview_proposes_text_without_changing_the_pdf() {
     assert!(preview["candidates"].as_array().unwrap().iter().any(|c| c["text"] == "First paragraph" && c["type"] == "P"));
 }
 
+#[test]
+fn autotag_apply_writes_reviewable_tags_and_survives_save_reopen() {
+    let dir = workdir("autotag-apply");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "b.pdf" }))["doc"].as_u64().unwrap();
+    let before = ok(&mut a, "accessibility_check", json!({ "doc": doc, "rules": ["tagged-pdf", "tagged-content"] }));
+    assert_eq!(before["failed"], 2);
+    let rendered_before = a.call("page_render", &json!({ "doc": doc, "page": 1, "dpi": 72 })).unwrap();
+
+    let applied = ok(&mut a, "accessibility_autotag_apply", json!({ "doc": doc }));
+    assert_eq!(applied["count"], 3, "Document plus one paragraph per page");
+    assert_eq!(applied["tags"][1]["type"], "P");
+    let after = ok(&mut a, "accessibility_check", json!({ "doc": doc, "rules": ["tagged-pdf", "tagged-content"] }));
+    assert_eq!(after["passed"], 2);
+    assert_eq!(a.call("page_render", &json!({ "doc": doc, "page": 1, "dpi": 72 })).unwrap(), rendered_before);
+    assert!(matches!(a.call("accessibility_autotag_apply", &json!({ "doc": doc })), Err(ToolError::Failed(_))));
+
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "tagged.pdf" }));
+    let saved = std::fs::read(dir.join("tagged.pdf")).unwrap();
+    let reopened = pdfcraft_cos::Document::open(std::sync::Arc::new(saved)).unwrap();
+    let pages = pdfcraft_model::pages(&reopened);
+    assert_eq!(pages.len(), 2);
+    assert!(pages.iter().all(|page| page.dict.contains(b"StructParents")));
+    assert!(reopened.get(reopened.root().unwrap()).as_dict().unwrap().contains(b"StructTreeRoot"));
+}
+
 /// A one-page PDF whose form holds one text field named `name`.
 fn form_pdf(name: &str) -> Vec<u8> {
     let objs: Vec<String> = vec![
@@ -2365,7 +2391,7 @@ fn fill_sign_text_font_size_is_saved_and_validated() {
     let dir = workdir("fill-sign-text-size");
     let mut a = auto(&dir);
     let doc = ok(&mut a, "doc_open", json!({ "path": "a.pdf" }))["doc"].as_u64().unwrap();
-    ok(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "text", "at": [20, 40], "text": "Big", "font_size": 24 }));
+    ok(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "text", "at": [20, 40], "text": "Big", "font_size": 24, "font": "Courier" }));
     let comments = ok(&mut a, "comment_list", json!({ "doc": doc }));
     let rect = comments["comments"][0]["rect"].as_array().unwrap();
     let height = rect[3].as_f64().unwrap() - rect[1].as_f64().unwrap();
@@ -2377,7 +2403,7 @@ fn fill_sign_text_font_size_is_saved_and_validated() {
     let annotations = pdf.resolve(page.dict.get(b"Annots").unwrap());
     let annotation = pdf.resolve(annotations.as_array().unwrap().first().unwrap());
     let da = annotation.as_dict().unwrap().get(b"DA").unwrap().as_string().unwrap();
-    assert!(da.bytes.windows(b"/Helv 24 Tf".len()).any(|w| w == b"/Helv 24 Tf"), "saved annotation uses the requested font size");
+    assert!(da.bytes.windows(b"/Cour 24 Tf".len()).any(|w| w == b"/Cour 24 Tf"), "saved annotation uses the requested font size");
     for size in [0, 3, 301] {
         assert!(matches!(
             a.call("fill_sign_add", &json!({ "doc": doc, "page": 1, "type": "text", "at": [20, 80], "text": "No", "font_size": size })),
@@ -5559,4 +5585,21 @@ fn private_crops_with_nested_state_resize_save_reopen_through_tools() {
         assert_eq!(a.call("page_render", &json!({"doc":doc,"page":1,"dpi":72})).unwrap(), pixels);
         assert_eq!(ok(&mut a, "page_images", json!({"doc":doc,"page":1})), original);
     }
+}
+
+#[test]
+fn fill_sign_selected_font_is_embedded_and_confined() {
+    let dir = workdir("fill-system-font");
+    std::fs::write(dir.join("font.ttf"), pdfcraft_fonts::INTER_REGULAR).unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({"path":"a.pdf"}))["doc"].as_u64().unwrap();
+    ok(&mut a, "fill_sign_add", json!({"doc":doc,"page":1,"type":"text","at":[20,40],"text":"Selected face","font_path":"font.ttf"}));
+    assert!(a.call("fill_sign_add", &json!({"doc":doc,"page":1,"type":"text","at":[20,80],"text":"No","font_path":"../outside.ttf"})).is_err());
+    ok(&mut a, "doc_save", json!({"doc":doc,"path":"font.pdf"}));
+    let pdf = pdfcraft_cos::Document::open(std::sync::Arc::new(std::fs::read(dir.join("font.pdf")).unwrap())).unwrap();
+    let page = pdfcraft_model::pages(&pdf).remove(0);
+    let annotations = pdf.resolve(page.dict.get(b"Annots").unwrap());
+    let annotation = pdf.resolve(annotations.as_array().unwrap().first().unwrap());
+    assert!(annotation.as_dict().unwrap().contains(b"PCTextFont"));
+    assert!(pdfcraft_fonts::undrawn_mark(annotation.as_dict().unwrap()).is_none());
 }

@@ -1,6 +1,6 @@
 # Localization parity
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-12 · **Change:** minor (list all registered interface languages; preserve the original coverage snapshot) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-13 · **Change:** minor (partial Korean UI and installed Hangul fallback; preserve the original aggregate coverage snapshot) · **Target:** Adobe Acrobat Pro (Acrobat DC, continuous track 26.002.21931, macOS)
 
 Per-language status of PdfCraft's interface against Acrobat Pro's. How translations work and how to
 add a language: [localization.md](localization.md). Summary in [ROADMAP.md](../ROADMAP.md).
@@ -37,12 +37,12 @@ add a language: [localization.md](localization.md). Summary in [ROADMAP.md](../R
 | Indonesian | `id` | 0 | none | Latin | no | none | no | 3–5 |
 | Japanese | `ja` | 2,123 (99.1%) | dialogs and tooltips; no help | BIZ UDPGothic from craft-fonts; IME patched on macOS, Windows, X11, Wayland; vertical text renders but can't be edited | no | partial | yes | 4–8 |
 | German | `de` | 2,128 (99.3%) | dialogs and tooltips; no help | Latin | community, in progress (#828: terminology, clipping) | partial | yes | 2–4 |
-| Korean | `ko` | 0 | none | Hangul IME patched (Microsoft and Apple Korean, `vendor/README.md` winit 3, 6, 9, 10); no Hangul UI face in craft-fonts | no | none | yes | 6–10 |
+| Korean | `ko` | 551 | partial: commands, tools, shell, Home and common preferences | Installed Hangul fallback on desktop; no bundled Hangul UI face or web fallback | no | partial | yes | not re-estimated |
 | Vietnamese | `vi` | 0 | none | Latin with stacked diacritics; bundled Inter covers them (not tested) | no | none | no | 3–5 |
 
-**Localization dimension ≈ 59%**: the mean over the twelve, counting a catalog's percentage but only
-60% for Chinese and Arabic until their script problems are fixed, and 0 for the four missing
-languages. **≈ 60–115 h** to bring all twelve to `full`, of which ≈ 35–60 h is engineering (Hans
+**Prior localization baseline ≈ 59% (2026-10-10)**: the mean over the twelve, counting a catalog's percentage but only
+60% for Chinese and Arabic and 0 for the four languages then missing, including Korean. Korean now
+has a partial catalog; the aggregate score and effort estimates below have not been remeasured. **≈ 60–115 h** to bring all twelve to `full`, of which ≈ 35–60 h is engineering (Hans
 face, RTL layout, bidi text) and the rest catalogs and fixes; native-speaker review needs humans.
 
 No language is `full` except English: every catalog leaves engine error details in English, and
@@ -77,3 +77,5 @@ Acrobat languages PdfCraft lacks: Danish, Dutch, Finnish, Norwegian, Swedish, He
 |---|---|---|
 | 2026-10-12 | minor | Added current counts for Kazakh, Polish, Slovenian, Greek, Turkish and Lithuanian; retained existing language assessments and the original percentage snapshot |
 | 2026-10-10 | major | Created. Catalog counts measured from `crates/ui-egui/src/i18n/*.tsv` against the 2,143-key union; Acrobat's localizations from its bundle's `.lproj` and Sequences folder names |
+
+Revision: 2026-10-13 — partial Korean UI and installed Hangul font fallback; macOS Auto ignores neutral launcher locales.

@@ -388,6 +388,8 @@ pub struct TypeBox {
     pub at: [f64; 2],
     pub text: String,
     pub size: f64,
+    pub font: pdfcraft_engine::OverlayFont,
+    pub system_font: Option<crate::fill_fonts::SelectedFont>,
     pub focus: bool,
 }
 
@@ -395,6 +397,72 @@ pub struct TypeBox {
 pub const TEXT_SIZE: f64 = 10.0;
 pub const MIN_TEXT_SIZE: f64 = 4.0;
 pub const MAX_TEXT_SIZE: f64 = 300.0;
+
+pub(crate) fn text_controls(
+    ui: &mut egui::Ui,
+    size: &mut f64,
+    font: &mut pdfcraft_engine::OverlayFont,
+    selected: &mut Option<crate::fill_fonts::SelectedFont>,
+    error: &mut Option<String>,
+    search: &mut String,
+) {
+    ui.horizontal(|ui| {
+        ui.label(tl!("Font size:"));
+        ui.add(egui::DragValue::new(size).range(MIN_TEXT_SIZE..=MAX_TEXT_SIZE).speed(0.25).suffix(" pt"));
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            let increase = format!("{} +1 pt", tl!("Font size:"));
+            let decrease = format!("{} −1 pt", tl!("Font size:"));
+            if ui.add_enabled_ui(*size < MAX_TEXT_SIZE, |ui| crate::icons::button(ui, "chevron-up", 20.0, false, &increase)).inner.clicked() {
+                *size = (*size + 1.0).min(MAX_TEXT_SIZE);
+            }
+            if ui.add_enabled_ui(*size > MIN_TEXT_SIZE, |ui| crate::icons::button(ui, "chevron-down", 20.0, false, &decrease)).inner.clicked() {
+                *size = (*size - 1.0).max(MIN_TEXT_SIZE);
+            }
+        });
+    });
+    ui.label(tl!("Font:"));
+    let fonts = crate::fill_fonts::installed(ui.ctx());
+    egui::ComboBox::from_id_salt("fill-text-font")
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .selected_text(selected.as_ref().map_or_else(|| format!("{} (PDF)", font.name()), |f| f.face.name.clone()))
+        .width(ui.available_width())
+        .truncate()
+        .height(300.0)
+        .show_ui(ui, |ui| {
+            ui.add(egui::TextEdit::singleline(search).hint_text(tl!("Search")).desired_width(240.0));
+            let query = search.to_lowercase();
+            for choice in pdfcraft_engine::OverlayFont::ALL {
+                if choice.name().to_lowercase().contains(&query)
+                    && ui.selectable_label(selected.is_none() && *font == choice, format!("{} (PDF)", choice.name())).clicked()
+                {
+                    *font = choice;
+                    *selected = None;
+                    *error = None;
+                    ui.close();
+                }
+            }
+            if let Some(fonts) = fonts {
+                for face in fonts.iter().filter(|f| f.name.to_lowercase().contains(&query)) {
+                    if ui.selectable_label(selected.as_ref().is_some_and(|s| s.face == *face), &face.name).clicked() {
+                        match crate::fill_fonts::SelectedFont::load(face.clone()) {
+                            Ok(value) => {
+                                *selected = Some(value);
+                                *error = None;
+                                ui.close();
+                            }
+                            Err(why) => *error = Some(why),
+                        }
+                    }
+                }
+            } else {
+                ui.label(tl!("Finding document fonts…"));
+            }
+        });
+    if let Some(error) = error {
+        ui.label(egui::RichText::new(error.as_str()).color(ui.visuals().error_fg_color));
+    }
+}
 
 pub fn valid_text_size(size: f64) -> Option<f64> {
     (size.is_finite() && (MIN_TEXT_SIZE..=MAX_TEXT_SIZE).contains(&size)).then_some(size)
@@ -413,8 +481,32 @@ fn new(page: usize, shape: Shape, contents: String, author: &str) -> Edit {
 
 /// A typewriter annotation sized to its text.
 pub fn typed(page: usize, at: [f64; 2], text: &str, size: f64, author: &str) -> Edit {
-    let rect = crate::comments::text_box_rect(at, text, size);
-    new(page, Shape::Typewriter { rect, font_size: size }, text.to_string(), author)
+    typed_with_font(page, at, text, size, pdfcraft_engine::OverlayFont::Helvetica, author)
+}
+
+pub fn typed_with_font(page: usize, at: [f64; 2], text: &str, size: f64, font: pdfcraft_engine::OverlayFont, author: &str) -> Edit {
+    typed_with_system_font(page, at, text, size, font, None, author)
+}
+
+pub fn typed_with_system_font(
+    page: usize,
+    at: [f64; 2],
+    text: &str,
+    size: f64,
+    font: pdfcraft_engine::OverlayFont,
+    system: Option<&crate::fill_fonts::SelectedFont>,
+    author: &str,
+) -> Edit {
+    let measure = |s: &str, size| {
+        system
+            .and_then(|f| pdfcraft_fonts::source_shaping::shape(&f.bytes, s).ok())
+            .map_or_else(|| font.metrics().text_width(s, size), |run| run.advance * size)
+    };
+    let width = (text.lines().map(|line| measure(line, size)).fold(0.0, f64::max) + 8.0).clamp(40.0, 300.0);
+    let lines = pdfcraft_fonts::wrap_with(text, size, width - 4.0, measure).len().max(1);
+    let height = lines as f64 * size * 1.2 + 6.0;
+    let rect = [at[0], at[1] - height, at[0] + width, at[1]];
+    new(page, Shape::Typewriter { rect, font_size: size, font, program: system.map(|f| f.bytes.clone()) }, text.to_string(), author)
 }
 
 /// Place a saved signature (strokes normalised to a 0–1 box, y up) with its left edge at `at`,
@@ -508,7 +600,7 @@ pub(crate) fn script_preview(text: &str, w: usize, h: usize) -> egui::ColorImage
 
 /// Saved previews and add/remove controls, shared by the left panel and quick-tool picker.
 pub(crate) fn signature_entries(ui: &mut egui::Ui, app: &mut crate::PdfCraftApp, t: &Tokens) -> Option<&'static str> {
-    ui.set_width(ui.available_width().clamp(240.0, 248.0));
+    ui.set_width(ui.available_width().clamp(180.0, 248.0));
     let mut command = None;
     for (i, (saved, what, use_id, change_id, remove_id)) in [
         (app.signature.as_ref(), "signature", "sign.fill.signature", "sign.fill.signature.change", "sign.fill.signature.remove"),
@@ -603,6 +695,8 @@ pub(crate) fn page_input(
     info: &DocInfo,
     tool: FillTool,
     text_size: f64,
+    text_font: pdfcraft_engine::OverlayFont,
+    system_font: Option<&crate::fill_fonts::SelectedFont>,
     view: &mut DocView,
     signature: Option<&SavedSig>,
     initials: Option<&SavedSig>,
@@ -637,12 +731,29 @@ pub(crate) fn page_input(
         FillTool::Text => {
             // Clicking away from an open box commits it: the page sees this click before the box
             // sees its lost focus, so replacing the box first would drop what was typed.
-            let open =
-                view.fill_text.replace(TypeBox { page, at: [at[0], at[1] + text_size * 0.6], text: String::new(), size: text_size, focus: true });
-            open.filter(|tb| !tb.text.trim().is_empty()).map(|tb| FillAction::Edit(Box::new(typed(tb.page, tb.at, tb.text.trim(), tb.size, author))))
+            let open = view.fill_text.replace(TypeBox {
+                page,
+                at: [at[0], at[1] + text_size * 0.6],
+                text: String::new(),
+                size: text_size,
+                font: text_font,
+                system_font: system_font.cloned(),
+                focus: true,
+            });
+            open.filter(|tb| !tb.text.trim().is_empty()).map(|tb| {
+                FillAction::Edit(Box::new(typed_with_system_font(tb.page, tb.at, tb.text.trim(), tb.size, tb.font, tb.system_font.as_ref(), author)))
+            })
         }
         FillTool::Date => Some(match date_text {
-            Ok(text) => FillAction::Edit(Box::new(typed(page, [at[0], at[1] + text_size * 0.6], text, text_size, author))),
+            Ok(text) => FillAction::Edit(Box::new(typed_with_system_font(
+                page,
+                [at[0], at[1] + text_size * 0.6],
+                text,
+                text_size,
+                text_font,
+                system_font,
+                author,
+            ))),
             Err(why) => FillAction::Refused(why.clone()),
         }),
         FillTool::Signature => match signature {
@@ -683,6 +794,9 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
     let v = info.pages.get(tb.page)?.user_to_view(tb.at[0] as f32, tb.at[1] as f32);
     let pos = xf.norm_to_screen(v[0] / xf.pw, v[1] / xf.ph);
     let zoom = xf.rect.width() / xf.pw.max(1.0);
+    let preview_font = tb.system_font.as_ref().map(|f| f.preview(ctx)).unwrap_or_else(|| {
+        if tb.font == pdfcraft_engine::OverlayFont::Courier { egui::FontFamily::Monospace } else { egui::FontFamily::Proportional }
+    });
     let mut commit = false;
     let mut cancel = false;
     egui::Area::new(egui::Id::new(("fill-text", view.id.0))).order(egui::Order::Foreground).fixed_pos(pos).show(ctx, |ui| {
@@ -695,7 +809,7 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
         ui.set_min_width(width);
         let r = ui.add(
             egui::TextEdit::singleline(&mut t.text)
-                .font(egui::FontId::proportional((t.size as f32 * zoom).max(8.0)))
+                .font(egui::FontId::new((t.size as f32 * zoom).max(8.0), preview_font))
                 .desired_width(width)
                 .background_color(Color32::from_rgba_unmultiplied(255, 255, 255, 230))
                 .text_color(Color32::BLACK)
@@ -719,7 +833,7 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
     if commit {
         let tb = view.fill_text.take()?;
         if !tb.text.trim().is_empty() {
-            return Some(typed(tb.page, tb.at, tb.text.trim(), tb.size, author));
+            return Some(typed_with_system_font(tb.page, tb.at, tb.text.trim(), tb.size, tb.font, tb.system_font.as_ref(), author));
         }
     }
     None
@@ -1212,6 +1326,36 @@ impl crate::PdfCraftApp {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn size_arrows_and_font_selector_work() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = egui_kittest::Harness::new_ui_state(
+            |ui, state: &mut (f64, pdfcraft_engine::OverlayFont, Option<crate::fill_fonts::SelectedFont>, Option<String>, String)| {
+                super::text_controls(ui, &mut state.0, &mut state.1, &mut state.2, &mut state.3, &mut state.4);
+            },
+            (10.0, pdfcraft_engine::OverlayFont::Helvetica, None, None, String::new()),
+        );
+        h.run();
+        h.get_by_label("Font size: +1 pt").click();
+        h.run();
+        assert_eq!(h.state().0, 11.0);
+        h.get_by_label("Font size: −1 pt").click();
+        h.run();
+        assert_eq!(h.state().0, 10.0);
+        h.state_mut().0 = super::MAX_TEXT_SIZE;
+        h.run();
+        h.get_by_label("Font size: +1 pt").click();
+        h.run();
+        assert_eq!(h.state().0, super::MAX_TEXT_SIZE);
+        h.get_by_role(egui::accesskit::Role::ComboBox).click();
+        h.run();
+        h.get_by_role(egui::accesskit::Role::TextInput).type_text("Cour");
+        h.run();
+        h.get_by_label("Courier (PDF)").click();
+        h.run();
+        assert_eq!(h.state().1, pdfcraft_engine::OverlayFont::Courier);
+    }
+
     #[test]
     fn long_signature_previews_have_clear_margins() {
         for text in ["Alexandria Catherine Elizabeth Montgomery-Wellington", "Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg"] {

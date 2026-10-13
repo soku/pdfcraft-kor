@@ -147,9 +147,10 @@ fn plural_sl(n: u64) -> usize {
 }
 
 /// The registry. English first: it is the fallback and the source language.
-pub static LANGUAGES: [LangInfo; 22] = [
+pub static LANGUAGES: [LangInfo; 23] = [
     LangInfo { code: "en", name: "English", source: "", plural: plural_one_other, rtl: false, catalog: OnceLock::new() },
     LangInfo { code: "ja", name: "日本語", source: include_str!("ja.tsv"), plural: plural_none, rtl: false, catalog: OnceLock::new() },
+    LangInfo { code: "ko", name: "한국어", source: include_str!("ko.tsv"), plural: plural_none, rtl: false, catalog: OnceLock::new() },
     // Simplified Chinese; `zh`, `zh-CN`, `zh-SG` and `zh-Hans-*` locales resolve here (see `candidates`).
     LangInfo {
         code: "zh-hans", name: "简体中文", source: include_str!("zh-hans.tsv"), plural: plural_none, rtl: false, catalog: OnceLock::new()
@@ -361,12 +362,12 @@ fn detect_system_lang() -> Lang {
     Lang::EN
 }
 
-/// A named locale can override the display language. On Windows, the neutral
+/// A named locale can override the display language. On macOS and Windows, the neutral
 /// C/POSIX locale inherited from a launcher says nothing about the user's UI language.
 #[cfg(not(target_arch = "wasm32"))]
 fn language_override(tag: &str) -> Option<Lang> {
     let tag = tag.trim();
-    if cfg!(target_os = "windows") && matches!(candidates(tag).first().map(String::as_str), Some("c" | "posix")) {
+    if cfg!(any(target_os = "macos", target_os = "windows")) && matches!(candidates(tag).first().map(String::as_str), Some("c" | "posix")) {
         return None;
     }
     lang_from_tag(tag)
@@ -610,6 +611,18 @@ mod tests {
     }
 
     #[test]
+    fn korean_system_language_and_labels() {
+        let ko = Lang::from_code("ko").expect("Korean is registered");
+        for tag in ["ko", "ko-KR", "ko_KR.UTF-8"] {
+            assert_eq!(lang_from_tag(tag), Some(ko));
+        }
+        assert_eq!(first_supported("(\"ko-KR\", \"ja-KR\")"), Some(ko));
+        assert_eq!(tr(ko, "Open"), "열기");
+        assert_eq!(tr(ko, "All tools"), "모든 도구");
+        assert_eq!(trn(ko, 2, "{n} page", "{n} pages"), "2페이지");
+    }
+
+    #[test]
     fn macos_language_list_is_parsed() {
         assert_eq!(first_supported("(\n    \"ja-JP\",\n    \"en-US\"\n)\n"), Some(JA()));
         assert_eq!(first_supported("(\n    \"fr-FR\",\n    \"en-US\"\n)\n"), Lang::from_code("fr"));
@@ -624,12 +637,13 @@ mod tests {
         for tag in ["zh-TW", "zh-HK", "zh-MO", "zh-Hant", "zh-Hant-HK"] {
             assert_eq!(first_supported(&format!("{tag}\r\n")), Lang::from_code("zh-hant"));
         }
+        assert_eq!(first_supported("ko-KR\r\nen-US\r\n"), Lang::from_code("ko"));
         assert_eq!(first_supported("en-US\r\n"), Some(Lang::EN));
         assert_eq!(first_supported("fr-FR\r\n"), Lang::from_code("fr"));
         assert_eq!(first_supported("\r\n"), None);
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]
     fn neutral_locale_does_not_override_display_language() {
         let fr = Lang::from_code("fr").unwrap();
@@ -799,6 +813,24 @@ mod tests {
         }
         for lang in &LANGUAGES {
             assert!(!lang.source.contains("PRINTCRAFT"), "{}", lang.code);
+        }
+    }
+
+    /// Korean translates every registered command and every All tools group, section and item.
+    #[test]
+    fn korean_covers_commands_and_catalogue() {
+        let ko = Lang::from_code("ko").expect("Korean is registered");
+        for command in pdfcraft_engine::commands::COMMANDS {
+            assert!(has(ko, command.label), "missing command: {}", command.label);
+        }
+        for group in pdfcraft_engine::catalog::TOOL_GROUPS {
+            assert!(has(ko, group.label), "missing group: {}", group.label);
+            for section in group.sections {
+                assert!(has(ko, section.title), "missing section: {}", section.title);
+                for item in section.items {
+                    assert!(has(ko, item.label), "missing item: {}", item.label);
+                }
+            }
         }
     }
 

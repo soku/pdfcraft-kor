@@ -220,6 +220,8 @@ pub const SYSTEM_FALLBACK: &str = "system-fallback";
 pub const SYSTEM_DEVANAGARI_FALLBACK: &str = "system-devanagari-fallback";
 /// The name of the installed Telugu face [`installed_font_definitions`] may add.
 pub const SYSTEM_TELUGU_FALLBACK: &str = "system-telugu-fallback";
+/// Installed Hangul face used for Korean labels and file names in every UI language.
+pub const SYSTEM_KOREAN_FALLBACK: &str = "system-korean-fallback";
 
 /// What [`install_fonts_for`] installs: [`font_definitions_for`], then, on desktop, one face
 /// already installed on this machine. It only draws characters no embedded face has.
@@ -246,6 +248,7 @@ pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
         for (name, data) in [
             (SYSTEM_DEVANAGARI_FALLBACK, crate::system_fonts::devanagari_fallback()),
             (SYSTEM_TELUGU_FALLBACK, crate::system_fonts::telugu_fallback()),
+            (SYSTEM_KOREAN_FALLBACK, crate::system_fonts::korean_fallback()),
         ] {
             let Some(data) = data else { continue };
             fonts.font_data.insert(name.to_owned(), data);
@@ -265,7 +268,8 @@ pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
             for stack in fonts.families.values_mut() {
                 let at = match need {
                     Need::Other => None,
-                    Need::Hans | Need::Hant => stack.iter().position(|n| japanese.contains(n)),
+                    // Installed Korean faces can contain Han glyphs too; keep Chinese first.
+                    Need::Hans | Need::Hant => stack.iter().position(|n| japanese.contains(n) || n == SYSTEM_KOREAN_FALLBACK),
                 };
                 stack.insert(at.unwrap_or(stack.len()), SYSTEM_FALLBACK.to_owned());
             }

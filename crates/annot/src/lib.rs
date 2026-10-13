@@ -367,6 +367,8 @@ pub enum Shape {
     },
     /// Fill & Sign text typed onto the page (FreeText, typewriter intent, no border).
     Typewriter {
+        program: Option<std::sync::Arc<Vec<u8>>>,
+        font: OverlayFont,
         rect: [f64; 4],
         font_size: f64,
     },
@@ -505,6 +507,22 @@ pub enum OverlayFont {
 
 impl OverlayFont {
     pub const ALL: [OverlayFont; 3] = [OverlayFont::Helvetica, OverlayFont::Times, OverlayFont::Courier];
+
+    pub fn base_name(self) -> &'static str {
+        match self {
+            Self::Helvetica => "Helvetica",
+            Self::Times => "Times-Roman",
+            Self::Courier => "Courier",
+        }
+    }
+
+    pub fn metrics(self) -> pdfcraft_fonts::Std14 {
+        match self {
+            Self::Helvetica => pdfcraft_fonts::Std14::Helvetica,
+            Self::Times => pdfcraft_fonts::Std14::TimesRoman,
+            Self::Courier => pdfcraft_fonts::Std14::Courier,
+        }
+    }
 
     pub fn name(self) -> &'static str {
         match self {
@@ -1194,7 +1212,11 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             }
             let size = if font_size.is_finite() && *font_size > 0.0 { font_size.clamp(1.0, 400.0) } else { 12.0 };
             let [r, g, b] = style.color.map(|x| x.clamp(0.0, 1.0));
-            d.set(b"DA".to_vec(), PdfString::literal(format!("{} {} {} rg /Helv {} Tf", n(r), n(g), n(b), n(size)).into_bytes()));
+            let font = match &new.shape {
+                Shape::Typewriter { font, .. } => *font,
+                _ => OverlayFont::Helvetica,
+            };
+            d.set(b"DA".to_vec(), PdfString::literal(format!("{} {} {} rg /{} {} Tf", n(r), n(g), n(b), font.resource(), n(size)).into_bytes()));
             d.set(b"Q".to_vec(), Object::Int(0));
             if let Some(f) = style.fill {
                 d.set(b"C".to_vec(), rgb(f));
@@ -1203,6 +1225,17 @@ pub fn add_annotation(doc: &mut Document, new: &NewAnnotation, meta: &Meta) -> R
             rich_text(&mut d);
         }
         _ => {}
+    }
+    if let Shape::Typewriter { program: Some(bytes), .. } = &new.shape {
+        pdfcraft_fonts::embedding::validate(bytes).map_err(AnnotError::Invalid)?;
+        if !pdfcraft_fonts::embedding::covers(bytes, &new.contents) {
+            return Err(AnnotError::Invalid("the selected font cannot display this text".into()));
+        }
+        let (family, _) = pdfcraft_fonts::embedding::names(bytes).map_err(AnnotError::Invalid)?;
+        d.set(b"PCTextFontName".to_vec(), PdfString::text(&family));
+        rich_text(&mut d);
+        let font = doc.add(Object::Stream(Stream::from_raw(Dict::new(), bytes.as_ref().clone())));
+        d.set(b"PCTextFont".to_vec(), Object::Ref(font));
     }
     if fill_sign_shape(&new.shape) {
         // Survives a later subject edit, so flatten-on-save still finds the mark.
@@ -1264,6 +1297,24 @@ pub fn orient_image_stamp(doc: &mut Document, page: usize, index: usize, rotatio
     Ok(())
 }
 
+/// A comment another program drew, whose text the standard fonts can't draw. Redrawing it would
+/// replace those characters with `?`, so the edit is refused before the dictionary changes.
+fn refuse_foreign_text(doc: &Document, d: &Dict) -> Result<(), AnnotError> {
+    if d.contains(b"PCTextFont") {
+        return Ok(());
+    }
+    let drawn_elsewhere =
+        d.get(b"AP").is_some_and(|ap| doc.resolve(ap).as_dict().is_some_and(|ap| ap.contains(b"N"))) && pdfcraft_fonts::undrawn_mark(d).is_none();
+    if drawn_elsewhere && let Some((what, c)) = appearance::undrawable_text(d) {
+        return Err(AnnotError::Undrawable(format!(
+            "PdfCraft can't redraw this comment: the standard fonts can't draw \"{}\" (U+{:04X}) in {what}, which would then show as ? (the comment was left as it is)",
+            c.escape_debug(),
+            u32::from(c)
+        )));
+    }
+    Ok(())
+}
+
 /// (Re)generate `/AP /N` for the annotation `r` from its dictionary, for an edit that keeps its
 /// text (a restyle, a new size or colour).
 ///
@@ -1272,17 +1323,17 @@ pub fn orient_image_stamp(doc: &mut Document, page: usize, index: usize, rotatio
 /// their place, so the edit is refused (`AnnotError::Undrawable`). One PdfCraft drew with `?`
 /// (marked `pdfcraft_fonts::UNDRAWN_MARK`) is redrawn.
 pub fn set_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
-    let d = annot_dict(doc, r);
-    let drawn_elsewhere =
-        d.get(b"AP").is_some_and(|ap| doc.resolve(ap).as_dict().is_some_and(|ap| ap.contains(b"N"))) && pdfcraft_fonts::undrawn_mark(&d).is_none();
-    if drawn_elsewhere && let Some((what, c)) = appearance::undrawable_text(&d) {
-        return Err(AnnotError::Undrawable(format!(
-            "PdfCraft can't redraw this comment: the standard fonts can't draw \"{}\" (U+{:04X}) in {what}, which would then show as ? (the comment was left as it is)",
-            c.escape_debug(),
-            u32::from(c)
-        )));
-    }
+    refuse_foreign_text(doc, &annot_dict(doc, r))?;
     draw_appearance(doc, r)
+}
+
+/// Put `before` back when redrawing fails, so a refused edit does not keep the new rectangle or style.
+fn redraw_or_restore(doc: &mut Document, r: ObjRef, before: Dict) -> Result<(), AnnotError> {
+    if let Err(e) = set_appearance(doc, r) {
+        doc.set(r, Object::Dict(before));
+        return Err(e);
+    }
+    Ok(())
 }
 
 /// Draw `r`'s normal appearance from its dictionary, whatever its text: characters the standard
@@ -1292,6 +1343,10 @@ pub fn set_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
 /// can't show, and for display-only copies.
 fn draw_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
     let d = annot_dict(doc, r);
+    if d.contains(b"PCTextFont") {
+        let stream = font_text::build(doc, &d)?;
+        return apply_appearance(doc, r, &d, stream);
+    }
     let subtype = String::from_utf8_lossy(d.name(b"Subtype").unwrap_or_default()).into_owned();
     let Some(stream) = build_appearance(doc, &d) else { return Err(AnnotError::Unsupported(subtype)) };
     apply_appearance(doc, r, &d, stream)
@@ -1300,6 +1355,9 @@ fn draw_appearance(doc: &mut Document, r: ObjRef) -> Result<(), AnnotError> {
 /// Draw the appearance for an annotation dictionary: the expensive half of [`set_appearance`].
 /// Pure from the dictionary and the objects it points at, so [`AppearanceCache`] can reuse it.
 fn build_appearance(doc: &Document, d: &Dict) -> Option<Stream> {
+    if d.contains(b"PCTextFont") {
+        return None;
+    }
     let mut stream = appearance::build(d)?;
     // Image stamp restyling must retain the placement's page-axis correction.
     if matches!(d.get(b"PCPictureImage"), Some(Object::Bool(true))) {
@@ -1319,7 +1377,7 @@ fn build_appearance(doc: &Document, d: &Dict) -> Option<Stream> {
 /// Store a built appearance on the annotation: the cheap half of [`set_appearance`].
 fn apply_appearance(doc: &mut Document, r: ObjRef, d: &Dict, stream: Stream) -> Result<(), AnnotError> {
     // Characters the standard fonts can't draw came out as `?`: mark the annotation with the first.
-    let missing = appearance::undrawable_text(d).map(|(_, c)| c);
+    let missing = if d.contains(b"PCTextFont") { None } else { appearance::undrawable_text(d).map(|(_, c)| c) };
     let ap = doc.add(Object::Stream(stream));
     // A copy (a shared /AP is left alone) that keeps unknown entries; the old down and rollover
     // appearances would show the previous look on press or hover, so they go with the old /N.
@@ -1443,6 +1501,8 @@ pub(crate) fn n(v: f64) -> String {
 fn rich_text(d: &mut Dict) {
     let text = d.get(b"Contents").and_then(|c| c.as_string()).map(PdfString::to_text).unwrap_or_default();
     let (col, size) = appearance::parse_da(d);
+    let family = d.get(b"PCTextFontName").and_then(Object::as_string).map(PdfString::to_text);
+    let font = family.as_deref().unwrap_or_else(|| appearance::text_font(d).base_name());
     let hex = format!(
         "#{:02X}{:02X}{:02X}",
         (col[0].clamp(0.0, 1.0) * 255.0).round() as u8,
@@ -1456,14 +1516,13 @@ fn rich_text(d: &mut Dict) {
     };
     let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
     let body: String = text.split('\n').map(|line| format!("<p dir=\"ltr\">{}</p>", esc(line.trim_end_matches('\r')))).collect();
-    let style = format!(
-        "font-size:{}pt;text-align:{align};color:{hex};font-weight:normal;font-style:normal;font-family:Helvetica;font-stretch:normal",
-        n(size)
-    );
+    let style =
+        format!("font-size:{}pt;text-align:{align};color:{hex};font-weight:normal;font-style:normal;font-family:{font};font-stretch:normal", n(size));
+    let style = esc(&style);
     let rc = format!(
         "<?xml version=\"1.0\"?><body xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:xfa=\"http://www.xfa.org/schema/xfa-data/1.0/\" xfa:spec=\"2.0.2\" style=\"{style}\">{body}</body>"
     );
-    d.set(b"DS".to_vec(), PdfString::text(&format!("font: Helvetica {}pt; text-align:{align}; color:{hex}", n(size))));
+    d.set(b"DS".to_vec(), PdfString::text(&format!("font: {font} {}pt; text-align:{align}; color:{hex}", n(size))));
     d.set(b"RC".to_vec(), PdfString::text(&rc));
 }
 
@@ -1547,6 +1606,14 @@ pub fn set_contents(doc: &mut Document, page: usize, index: usize, text: &str, m
 fn fitted_box(doc: &Document, r: ObjRef, text: &str) -> Option<[f64; 4]> {
     let d = annot_dict(doc, r);
     let nums = |key: &[u8]| -> Option<Vec<f64>> { d.get(key)?.as_array()?.iter().map(|o| o.as_f64()).collect() };
+    let program = if d.contains(b"PCTextFont") { font_text::program(doc, &d).ok() } else { None };
+    let font = appearance::text_font(&d).metrics();
+    let measure = |text: &str, size| {
+        program
+            .as_ref()
+            .and_then(|bytes| pdfcraft_fonts::source_shaping::shape(bytes, text).ok())
+            .map_or_else(|| font.text_width(text, size), |r| r.advance * size)
+    };
     let (_, size) = appearance::parse_da(&d);
     let pad = 2.0 + border_width_of(&d);
     let rect = nums(b"Rect").filter(|v| v.len() == 4 && v.iter().all(|x| x.is_finite()))?;
@@ -1564,10 +1631,10 @@ fn fitted_box(doc: &Document, r: ObjRef, text: &str) -> Option<[f64; 4]> {
         w
     } else {
         // No usable old width: fall back to the creation-time width (at most 300 pt).
-        let longest = text.lines().map(|l| appearance::text_width(l, size)).fold(0.0, f64::max);
+        let longest = text.lines().map(|l| measure(l, size)).fold(0.0, f64::max);
         (longest + 2.0 * pad + 4.0).clamp(40.0, 300.0)
     };
-    let lines = appearance::wrap(text, size, (w - 2.0 * pad).max(1.0)).len().max(1) as f64;
+    let lines = pdfcraft_fonts::wrap_with(text, size, (w - 2.0 * pad).max(1.0), measure).len().max(1) as f64;
     Some([x0, top - lines * size * 1.2 - 2.0 * pad - 2.0, x0 + w, top])
 }
 
@@ -1783,13 +1850,13 @@ fn resize_ink(doc: &mut Document, r: ObjRef, rect: [f64; 4], meta: &Meta) -> Res
             s.iter().map(|p| [axis(p[0], inner[0], inner[2], target[0], target[2]), axis(p[1], inner[1], inner[3], target[1], target[3])]).collect()
         })
         .collect();
+    let before = annot_dict(doc, r);
     doc.update_dict(r, |d| {
         d.set(b"InkList".to_vec(), Object::Array(scaled.iter().map(|s| num_array(&s.concat())).collect()));
         d.set(b"Rect".to_vec(), num_array(&rect));
         touch(d, meta);
     })?;
-    set_appearance(doc, r)?;
-    Ok(())
+    redraw_or_restore(doc, r, before)
 }
 
 /// Store `rect` as a FreeText annotation's text box (or a square's/oval's rectangle): a callout's
@@ -1801,6 +1868,9 @@ fn apply_text_box(doc: &mut Document, r: ObjRef, rect: [f64; 4], meta: &Meta, ne
         return Err(AnnotError::Invalid("invalid rectangle (too small)".into()));
     }
     let d = annot_dict(doc, r);
+    if !new_text {
+        refuse_foreign_text(doc, &d)?;
+    }
     // A callout's rectangle is its text box: the leader line re-attaches and `/Rect` grows to hold it.
     let callout = d.get(b"CL").and_then(|o| o.as_array()).map(|a| a.iter().filter_map(|x| x.as_f64()).collect::<Vec<f64>>()).filter(|l| l.len() == 6);
     let (outer, cl) = match callout {
@@ -1826,7 +1896,16 @@ fn apply_text_box(doc: &mut Document, r: ObjRef, rect: [f64; 4], meta: &Meta, ne
         }
         touch(d, meta);
     })?;
-    if new_text { draw_appearance(doc, r) } else { set_appearance(doc, r) }
+    let before = d;
+    if new_text {
+        if let Err(e) = draw_appearance(doc, r) {
+            doc.set(r, Object::Dict(before));
+            return Err(e);
+        }
+        Ok(())
+    } else {
+        redraw_or_restore(doc, r, before)
+    }
 }
 
 fn border_width_of(d: &Dict) -> f64 {
@@ -1863,13 +1942,16 @@ pub fn set_style(
             return Err(AnnotError::Invalid("this comment has no line endings to change".into()));
         }
     }
+    refuse_foreign_text(doc, &d)?;
     let free_text = subtype == "FreeText";
+    let before = d;
     doc.update_dict(r, |d| {
         if let Some(c) = color {
             if free_text {
                 let (_, size) = appearance::parse_da(d);
                 let [r, g, b] = c.map(|x| x.clamp(0.0, 1.0));
-                d.set(b"DA".to_vec(), PdfString::literal(format!("{} {} {} rg /Helv {} Tf", n(r), n(g), n(b), n(size)).into_bytes()));
+                let font = appearance::text_font(d);
+                d.set(b"DA".to_vec(), PdfString::literal(format!("{} {} {} rg /{} {} Tf", n(r), n(g), n(b), font.resource(), n(size)).into_bytes()));
                 rich_text(d);
             } else {
                 d.set(b"C".to_vec(), rgb(c));
@@ -1901,7 +1983,7 @@ pub fn set_style(
         ensure_ending_room(d);
         touch(d, meta);
     })?;
-    set_appearance(doc, r)
+    redraw_or_restore(doc, r, before)
 }
 
 /// Whether a comment of this subtype has an interior that can be filled (`/IC`: rectangles,
@@ -1927,6 +2009,8 @@ pub fn set_fill(doc: &mut Document, page: usize, index: usize, fill: Option<Rgb>
     if fill.is_some_and(|c| !finite(&c)) {
         return Err(AnnotError::Invalid("invalid fill colour".into()));
     }
+    refuse_foreign_text(doc, &d)?;
+    let before = d;
     doc.update_dict(r, |d| {
         match fill {
             Some(c) => d.set(b"IC".to_vec(), rgb(c)),
@@ -1936,7 +2020,7 @@ pub fn set_fill(doc: &mut Document, page: usize, index: usize, fill: Option<Rgb>
         }
         touch(d, meta);
     })?;
-    set_appearance(doc, r)
+    redraw_or_restore(doc, r, before)
 }
 
 /// Grow a line or polyline's rectangle so a non-`None` ending is not clipped. Idempotent.
@@ -2325,3 +2409,5 @@ pub fn erase_ink(doc: &mut Document, page: usize, index: usize, path: &[[f64; 2]
     set_appearance(doc, r)?;
     Ok(true)
 }
+
+mod font_text;

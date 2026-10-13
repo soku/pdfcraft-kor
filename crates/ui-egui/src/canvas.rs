@@ -2325,7 +2325,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let author = app.comment_prefs.author.clone();
     let today = app.session.today();
     // In Preferences ▸ Date format, or why it can't be stamped into the PDF.
-    let date_text = crate::date_text_for_pdf(&app.session);
+    let date_text = if app.fill_system_font.is_some() { crate::date_text(&app.session, None) } else { crate::date_text_for_pdf(&app.session) };
     let mut refused: Option<String> = None;
     let by_line = app.session.stamp_by_line(&author);
     let mut stamp_placed = false;
@@ -2641,6 +2641,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     info,
                     ft,
                     app.fill_text_size,
+                    app.fill_text_font,
+                    app.fill_system_font.as_ref(),
                     view,
                     signature.as_ref(),
                     initials.as_ref(),
@@ -3985,16 +3987,26 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                     }
                     let open = (resp.clicked() && current_fill.is_some()) || resp.secondary_clicked();
                     egui::Popup::menu(&resp)
+                        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                         .open_memory(open.then_some(egui::SetOpenCommand::Toggle))
                         .align(egui::RectAlign::RIGHT_START)
                         .gap(6.0)
                         .show(|ui| {
+                            let width = if app.signature.is_some()
+                                || app.initials.is_some()
+                                || current_fill.is_some_and(|f| matches!(f, crate::fill_sign::FillTool::Text | crate::fill_sign::FillTool::Date))
+                            {
+                                248.0
+                            } else {
+                                180.0
+                            };
+                            ui.set_width(width);
                             for tool in crate::fill_sign::FILL_TOOLS {
                                 if matches!(tool, crate::fill_sign::FillTool::Signature | crate::fill_sign::FillTool::Initials) {
                                     continue;
                                 }
                                 let on = current_fill == Some(tool);
-                                let (row, click) = ui.allocate_exact_size(vec2(180.0, 28.0), Sense::click());
+                                let (row, click) = ui.allocate_exact_size(vec2(width, 28.0), Sense::click());
                                 let press = theme::Press::track(ui, &click);
                                 press.wash(ui, row, 4, on);
                                 let body = row.translate(press.offset());
@@ -4025,21 +4037,23 @@ fn quick_bar(app: &mut PdfCraftApp, area: Rect, ui: &mut egui::Ui) {
                                     ui.close();
                                 }
                             }
+                            if matches!(current_fill, Some(crate::fill_sign::FillTool::Text | crate::fill_sign::FillTool::Date)) {
+                                ui.separator();
+                                crate::fill_sign::text_controls(
+                                    ui,
+                                    &mut app.fill_text_size,
+                                    &mut app.fill_text_font,
+                                    &mut app.fill_system_font,
+                                    &mut app.fill_font_error,
+                                    &mut app.fill_font_search,
+                                );
+                            }
                             ui.separator();
                             if let Some(command) = crate::fill_sign::signature_entries(ui, app, &t) {
                                 app.execute(command);
                                 ui.close();
                             }
                         });
-                    if matches!(current_fill, Some(crate::fill_sign::FillTool::Text | crate::fill_sign::FillTool::Date)) {
-                        ui.label(tl!("Font size:"));
-                        ui.add(
-                            egui::DragValue::new(&mut app.fill_text_size)
-                                .range(crate::fill_sign::MIN_TEXT_SIZE..=crate::fill_sign::MAX_TEXT_SIZE)
-                                .speed(0.25)
-                                .suffix(" pt"),
-                        );
-                    }
                     if let QuickTool::Comment(tool) = app.quick_tool {
                         let (r, _) = ui.allocate_exact_size(vec2(32.0, 9.0), Sense::hover());
                         ui.painter().hline(r.x_range().shrink(6.0), r.center().y, Stroke::new(1.0, t.divider));

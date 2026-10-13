@@ -1,0 +1,555 @@
+# Korean (ko) interface catalog. Format and escapes: see ja.tsv.
+# Contributor-original translations of English UI labels; no proprietary translation resources.
+# Korean has one plural form. Untranslated labels fall back to English.
+
+	Menu	메뉴
+	File	파일
+	Edit	편집
+	Pages	페이지
+	View	보기
+	Help	도움말
+	Open	열기
+	Open…	열기…
+	Open file	파일 열기
+	Open Recent	최근 파일 열기
+	Clear Recent Files	최근 파일 목록 지우기
+	Pin folder to Home…	홈에 폴더 고정…
+	New blank PDF	빈 PDF 만들기
+	Measure distance	거리 측정
+	Measure perimeter	둘레 측정
+	Measure area	면적 측정
+	Set measurement scale	측정 축척 설정
+	Measurement information	측정 정보
+	Measurement snapping	측정 스냅
+	Export measurements as CSV	측정값을 CSV로 내보내기
+	Copy pages	페이지 복사
+	Cut pages	페이지 잘라내기
+	Paste pages	페이지 붙여넣기
+	Create PDF from file…	파일로 PDF 만들기…
+	Create PDF from multiple files…	여러 파일로 PDF 만들기…
+	Create separate PDFs…	개별 PDF 만들기…
+	Create PDF from images…	이미지로 PDF 만들기…
+	Create PDF from clipboard	클립보드에서 PDF 만들기
+	Combine files…	파일 병합…
+	Save	저장
+	Save as…	다른 이름으로 저장…
+	Close file	파일 닫기
+	Close all	모두 닫기
+	Revert	저장된 상태로 되돌리기
+	Print…	인쇄…
+	Document properties…	문서 속성…
+	Undo	실행 취소
+	Redo	다시 실행
+	Find…	찾기…
+	Advanced search…	고급 검색…
+	Find tools and commands…	도구 및 명령 찾기…
+	Find tools and commands	도구 및 명령 찾기
+	Single page	한 페이지
+	Two-page view	두 페이지 보기
+	Continuous scrolling	연속 스크롤
+	Show cover page in two-page view	두 페이지 보기에서 표지 별도 표시
+	Fit to width scrolling	너비에 맞춰 스크롤
+	Fit one full page	한 페이지 전체 맞춤
+	Fit visible	보이는 영역에 맞춤
+	Marquee zoom	영역 확대
+	Column select	열 선택
+	Take a snapshot	스냅샷 찍기
+	Full screen mode	전체 화면 모드
+	Read mode	읽기 모드
+	Go to page…	페이지로 이동…
+	Reset panel layout	패널 배치 초기화
+	Switch light / dark theme	밝은 테마 / 어두운 테마 전환
+	Use system setting	시스템 설정 사용
+	Light gray	밝은 회색
+	Dark gray	어두운 회색
+	Comments panel	주석 패널
+	Add a sticky note	메모 추가
+	Add a text box	텍스트 상자 추가
+	Highlight text	텍스트 강조
+	Underline text	텍스트 밑줄
+	Strikethrough text	텍스트 취소선
+	Squiggly underline text	텍스트 물결 밑줄
+	Draw freehand	자유롭게 그리기
+	Draw a line	선 그리기
+	Draw an arrow	화살표 그리기
+	Draw a rectangle	사각형 그리기
+	Draw an oval	타원 그리기
+	Draw a polygon	다각형 그리기
+	Draw connected lines	연결된 선 그리기
+	Draw a cloud	구름 그리기
+	Add a callout	설명선 추가
+	Insert text	텍스트 삽입
+	Replace text	텍스트 바꾸기
+	Attach a file	파일 첨부
+	Erase drawings	그리기 지우기
+	Form fields panel	양식 필드 패널
+	Clear form	양식 지우기
+	Flatten comments	주석을 페이지에 병합
+	Import comments…	주석 가져오기…
+	Add a stamp	스탬프 추가
+	Export all comments to data file…	모든 주석을 데이터 파일로 내보내기…
+	Hide all comments	모든 주석 숨기기
+	Summarize comments	주석 요약
+	Import form data…	양식 데이터 가져오기…
+	Export form data…	양식 데이터 내보내기…
+	PDF/A…	PDF/A…
+	Action Wizard…	작업 마법사…
+	Prepare for distribution…	배포 준비…
+	Optimize scanned documents…	스캔 문서 최적화…
+	Compare files…	파일 비교…
+	Detect form fields	양식 필드 감지
+	Merge data files into spreadsheet…	데이터 파일을 스프레드시트로 병합…
+	Flatten form fields	양식 필드를 페이지에 병합
+	Prepare a form	양식 준비
+	Tab order: by rows	탭 순서: 행 기준
+	Tab order: by columns	탭 순서: 열 기준
+	Tab order: by document structure	탭 순서: 문서 구조 기준
+	Add text	텍스트 추가
+	Edit text & images	텍스트 및 이미지 편집
+	Add or edit links	링크 추가 또는 편집
+	Create links from URLs	URL로 링크 만들기
+	Remove all links	모든 링크 제거
+	Add Bates numbering…	베이츠 번호 추가…
+	Add image…	이미지 추가…
+	Redact text and images	텍스트 및 이미지 가리기
+	Redact pages…	페이지 가리기…
+	Find text and redact…	텍스트를 찾아 가리기…
+	Redaction properties…	가리기 속성…
+	Apply redactions…	가리기 적용…
+	Clear redaction marks	가리기 표시 지우기
+	Remove hidden information…	숨겨진 정보 제거…
+	Sanitize document…	문서의 민감한 정보 제거…
+	Field properties…	필드 속성…
+	Add a text field	텍스트 필드 추가
+	Add a checkbox	체크박스 추가
+	Add a radio button	라디오 버튼 추가
+	Add a drop-down list	드롭다운 목록 추가
+	Add a list box	목록 상자 추가
+	Add a button	버튼 추가
+	Add an image field	이미지 필드 추가
+	Add a date field	날짜 필드 추가
+	Add a digital signature field	디지털 서명 필드 추가
+	Digitally sign	디지털 서명
+	Certify (visible signature)	인증(서명 표시)
+	Certify (invisible signature)	인증(서명 숨김)
+	Validate all signatures	모든 서명 검증
+	Signatures panel	서명 패널
+	Fill & Sign: add text	입력 및 서명: 텍스트 추가
+	Fill & Sign: checkmark	입력 및 서명: 체크 표시
+	Fill & Sign: cross	입력 및 서명: X 표시
+	Fill & Sign: dot	입력 및 서명: 점
+	Fill & Sign: line	입력 및 서명: 선
+	Fill & Sign: date	입력 및 서명: 날짜
+	Fill & Sign: sign	입력 및 서명: 서명
+	Fill & Sign: initials	입력 및 서명: 이니셜
+	Fill & Sign: change signature	입력 및 서명: 서명 변경
+	Fill & Sign: remove saved signature	입력 및 서명: 저장된 서명 삭제
+	Fill & Sign: remove saved initials	입력 및 서명: 저장된 이니셜 삭제
+	Fill & Sign: change initials	입력 및 서명: 이니셜 변경
+	Export to image…	이미지로 내보내기…
+	Reduce file size…	파일 크기 줄이기…
+	Optimize PDF…	PDF 최적화…
+	Export to text…	텍스트로 내보내기…
+	Export to Word…	Word로 내보내기…
+	Export to PowerPoint…	PowerPoint로 내보내기…
+	Export to HTML…	HTML로 내보내기…
+	Export to RTF…	RTF로 내보내기…
+	Preferences…	환경설정…
+	JavaScript console…	JavaScript 콘솔…
+	Document JavaScripts…	문서 JavaScript…
+	Recognize text…	텍스트 인식…
+	Enhance camera image	카메라 이미지 개선
+	Recognize text in multiple files…	여러 파일의 텍스트 인식…
+	Check for accessibility…	접근성 검사…
+	Open accessibility report	접근성 보고서 열기
+	Change reading options…	읽기 옵션 변경…
+	Add alternate text…	대체 텍스트 추가…
+	Tags panel	태그 패널
+	Export all images…	모든 이미지 내보내기…
+	Add header & footer…	머리글 및 바닥글 추가…
+	Update header & footer…	머리글 및 바닥글 수정…
+	Remove header & footer	머리글 및 바닥글 제거
+	Add watermark…	워터마크 추가…
+	Update watermark…	워터마크 수정…
+	Remove watermark	워터마크 제거
+	Add background…	배경 추가…
+	Update background…	배경 수정…
+	Remove background	배경 제거
+	Protect using password…	암호로 보호…
+	Remove security	보안 제거
+	Enter permissions password…	권한 암호 입력…
+	Security properties…	보안 속성…
+	Organize pages	페이지 구성
+	New bookmark	새 책갈피
+	New bookmarks from structure	문서 구조로 책갈피 만들기
+	Rotate pages clockwise	페이지 시계 방향 회전
+	Rotate pages counterclockwise	페이지 반시계 방향 회전
+	Delete pages	페이지 삭제
+	Insert blank page	빈 페이지 삽입
+	Rotate pages…	페이지 회전…
+	Duplicate pages	페이지 복제
+	Crop pages	페이지 자르기
+	Set page boxes…	페이지 영역 설정…
+	Insert pages from file…	파일에서 페이지 삽입…
+	Replace pages…	페이지 바꾸기…
+	Extract pages…	페이지 추출…
+	Split document…	문서 분할…
+	Number pages…	페이지 번호 지정…
+	Keyboard shortcuts	키보드 단축키
+	Join the ArtCraft Discord	ArtCraft Discord 참여
+	PdfCraft web page	PdfCraft 웹페이지
+	PdfCraft on GitHub	GitHub에서 PdfCraft 보기
+	ArtCraft website	ArtCraft 웹사이트
+	Check for updates…	업데이트 확인…
+	About PdfCraft	PdfCraft 정보
+	All tools	모든 도구
+	Read	읽기
+	Convert	변환
+	E-Sign	전자 서명
+	Home	홈
+	Welcome to PdfCraft	PdfCraft에 오신 것을 환영합니다
+	An open-source PDF workbench — local, private, and scriptable.	내 컴퓨터에서 안전하게 사용하고 자동화할 수 있는 오픈소스 PDF 도구입니다.
+	Join the ArtCraft community	ArtCraft 커뮤니티 참여
+	Get help, share feedback and follow development on Discord.	Discord에서 도움을 받고 의견과 개발 소식을 나누세요.
+	Recommended tools	추천 도구
+	Use now	사용하기
+	Recent	최근 항목
+	Clear	지우기
+	Files you open in PdfCraft appear here. Drop a PDF anywhere to open it.	PdfCraft에서 연 파일이 여기에 표시됩니다. PDF를 끌어다 놓으면 열 수 있습니다.
+	Remove {name} from Recent	최근 항목에서 {name} 제거
+	Remove from Recent	최근 항목에서 제거
+	Privacy	개인정보 보호
+	PdfCraft works offline. No telemetry, no account, and no cloud processing unless you add a provider.	PdfCraft는 오프라인으로 작동합니다. 사용 정보를 수집하지 않으며 계정도 필요 없습니다. 서비스 제공자를 추가하지 않으면 클라우드로 문서를 처리하지 않습니다.
+	Preferences	환경설정
+	Interface language	프로그램 언어
+	Interface size	화면 크기
+	Auto	자동
+	Auto ({percent}%)	자동({percent}%)
+	Auto follows the system's text size. Pages always render at the display's full resolution.	자동은 시스템 글자 크기를 따릅니다. 페이지는 항상 화면의 전체 해상도로 표시됩니다.
+	Identity	사용자 정보
+	Name on new comments	새 주석에 표시할 이름
+	Display theme	화면 테마
+	Side panels	측면 패널
+	Enable Acrobat JavaScript	Acrobat JavaScript 사용
+	Flatten Fill & Sign when saving	저장할 때 입력 및 서명을 페이지에 병합
+	Text, marks and signatures become part of the page. Other comments stay editable.	텍스트, 표시와 서명이 페이지에 합쳐집니다. 다른 주석은 계속 편집할 수 있습니다.
+	Animation effects	애니메이션 효과
+	On	켬
+	Off	끔
+	OK	확인
+	Cancel	취소
+	Apply	적용
+	Close	닫기
+	Yes	예
+	No	아니요
+	Done	완료
+	Delete	삭제
+	Remove	제거
+	Add	추가
+	Copy	복사
+	Cut	잘라내기
+	Paste	붙여넣기
+	Select all	모두 선택
+	Selection	선택 영역
+	Search	검색
+	Next	다음
+	Previous	이전
+	Back	뒤로
+	Default	기본값
+	None	없음
+	All	모두
+	Custom	사용자 지정
+	Name	이름
+	Type	유형
+	Size	크기
+	Date	날짜
+	Location	위치
+	Title	제목
+	Author	작성자
+	Subject	주제
+	Keywords	키워드
+	Description	설명
+	General	일반
+	Security	보안
+	Fonts	글꼴
+	Advanced	고급
+	Page	페이지
+	Page display	페이지 표시
+	Zoom	확대/축소
+	Zoom in	확대
+	Zoom out	축소
+	Actual size	실제 크기
+	Zoom to page level	페이지에 맞춤
+	Fit to width	너비에 맞춤
+	Bookmarks	책갈피
+	Comments	주석
+	Attachments	첨부 파일
+	Layers	레이어
+	Tags	태그
+	Signatures	서명
+	Form fields	양식 필드
+	No recent files	최근 파일 없음
+	Loading…	불러오는 중…
+	Print	인쇄
+	Export	내보내기
+	Import	가져오기
+	Browse…	찾아보기…
+	Choose…	선택…
+	Password	암호
+	Don't save	저장 안 함
+	Save changes?	변경 사항을 저장할까요?
+	Color	색상
+	Opacity	불투명도
+	Width	너비
+	Height	높이
+	Rotation	회전
+	Rotation:	회전:
+	Units	단위
+	Text	텍스트
+	Image	이미지
+	Images	이미지
+	Line	선
+	Rectangle	사각형
+	Oval	타원
+	Arrow	화살표
+	Highlight	강조
+	Underline	밑줄
+	Strikethrough	취소선
+	Note	메모
+	Reply	답글
+	Status	상태
+	Options	옵션
+	Appearance	모양
+	Fill	채우기
+	Font	글꼴
+	Bold	굵게
+	Italic	기울임
+	Left	왼쪽
+	Right	오른쪽
+	Center	가운데
+	Top	위쪽
+	Bottom	아래쪽
+	Horizontal	가로
+	Vertical	세로
+	Portrait	세로 방향
+	Landscape	가로 방향
+	All pages	모든 페이지
+	Current page	현재 페이지
+	Selected pages	선택한 페이지
+	From	시작
+	Previous page	이전 페이지
+	Next page	다음 페이지
+	Rotate view	보기 회전
+	Combine files	파일 병합
+	Fill & Sign	입력 및 서명
+	Scan & OCR	스캔 및 OCR
+	Protect a PDF	PDF 보호
+	Redact a PDF	PDF 가리기
+	Use a certificate	인증서 사용
+	Measure objects	개체 측정
+	Add comments	주석 추가
+	Compare files	파일 비교
+	Print production	인쇄 제작
+	Accessibility	접근성
+	Export a PDF	PDF 내보내기
+	Export to	내보내기 형식
+	Edit a PDF	PDF 편집
+	Modify page	페이지 수정
+	Add content	내용 추가
+	Create a PDF	PDF 만들기
+	Create from	만들기 원본
+	Combine	병합
+	Page options	페이지 옵션
+	More	더 보기
+	Markup	마크업
+	Drawing	그리기
+	Review	검토
+	Recognize text	텍스트 인식
+	Protect	보호
+	Advanced options	고급 옵션
+	Redact	가리기
+	Compress a PDF	PDF 압축
+	Optimize	최적화
+	Fields	필드
+	Add form components	양식 구성 요소 추가
+	Stamps	스탬프
+	Certificates	인증서
+	Use print production	인쇄 제작
+	Measure	측정
+	Compare	비교
+	Use guided actions	안내에 따라 작업
+	Actions list	작업 목록
+	Prepare for accessibility	접근성 준비
+	Apply PDF standards	PDF 표준 적용
+	Standards	표준
+	Add search index	검색 색인 추가
+	Index	색인
+	Use JavaScript	JavaScript 사용
+	JavaScript	JavaScript
+	AI assistant	AI 도우미
+	Bring your own model (off by default)	사용할 모델 연결(기본값: 꺼짐)
+	Microsoft Word (.docx)	Microsoft Word (.docx)
+	Spreadsheet (.xlsx)	스프레드시트 (.xlsx)
+	Presentation (.pptx)	프레젠테이션 (.pptx)
+	Image (PNG)	이미지 (PNG)
+	Export all images	모든 이미지 내보내기
+	HTML web page	HTML 웹페이지
+	Rich Text Format (.rtf)	서식 있는 텍스트 (.rtf)
+	Text (plain)	일반 텍스트
+	PostScript / EPS	PostScript / EPS
+	Checkmark	체크 표시
+	Cross	X 표시
+	Dot	점
+	Signature	서명
+	Initials	이니셜
+	Change signature	서명 변경
+	Change initials	이니셜 변경
+	Rotate pages	페이지 회전
+	Insert pages	페이지 삽입
+	Extract pages	페이지 추출
+	Header and footer	머리글 및 바닥글
+	Watermark	워터마크
+	Link	링크
+	Bates numbering	베이츠 번호
+	Background	배경
+	Attach file	파일 첨부
+	Single file	단일 파일
+	Multiple files	여러 파일
+	Separate PDFs	개별 PDF
+	Clipboard	클립보드
+	Blank page	빈 페이지
+	Add files to combine	병합할 파일 추가
+	Page grid	페이지 격자
+	Rotate	회전
+	Extract	추출
+	Insert	삽입
+	Replace	바꾸기
+	Split	분할
+	Set page boxes	페이지 영역 설정
+	Page labels	페이지 번호 표시
+	Page transitions	페이지 전환 효과
+	Sticky note	메모
+	Squiggly underline	물결 밑줄
+	Text box	텍스트 상자
+	Cloud	구름
+	Stamp	스탬프
+	Comment list	주석 목록
+	In this file	이 파일에서
+	In multiple files	여러 파일에서
+	Enhance scanned file	스캔 파일 개선
+	Correct recognized text	인식된 텍스트 수정
+	Protect with password	암호로 보호
+	Remove hidden information	숨겨진 정보 제거
+	Encrypt with certificate	인증서로 암호화
+	Security properties	보안 속성
+	Redact pages	페이지 가리기
+	Find text and redact	텍스트를 찾아 가리기
+	Set properties	속성 설정
+	Sanitize document	문서의 민감한 정보 제거
+	Reduce file size	파일 크기 줄이기
+	Advanced optimization	고급 최적화
+	Audit space usage	용량 사용량 분석
+	Field list	필드 목록
+	Field properties	필드 속성
+	Tab order by rows	행 기준 탭 순서
+	Tab order by columns	열 기준 탭 순서
+	Import data	데이터 가져오기
+	Export data	데이터 내보내기
+	Text field	텍스트 필드
+	Checkbox	체크박스
+	Radio button	라디오 버튼
+	Drop-down list	드롭다운 목록
+	List box	목록 상자
+	Button	버튼
+	Image field	이미지 필드
+	Date field	날짜 필드
+	Digital signature	디지털 서명
+	Stamp palette	스탬프 모음
+	Timestamp	타임스탬프
+	Output preview	출력 미리보기
+	Preflight	인쇄 전 검사
+	Convert colors	색상 변환
+	Add printer marks	인쇄 표시 추가
+	Fix hairlines	가는 선 보정
+	Distance	거리
+	Perimeter	둘레
+	Area	면적
+	Drawing scale	도면 축척
+	Snapping	스냅
+	Export measurements	측정값 내보내기
+	Geospatial location	지리적 위치
+	Select files to compare	비교할 파일 선택
+	Action Wizard	작업 마법사
+	Make accessible	접근성 개선
+	Prepare for distribution	배포 준비
+	Optimize scanned documents	스캔 문서 최적화
+	Archive documents	문서 보관
+	Automatically tag PDF	PDF 태그 자동 지정
+	Change reading options	읽기 옵션 변경
+	Check for accessibility	접근성 검사
+	Add alternate text	대체 텍스트 추가
+	Fix reading order	읽기 순서 수정
+	Save as PDF/A	PDF/A로 저장
+	Save as PDF/X	PDF/X로 저장
+	Save as PDF/UA	PDF/UA로 저장
+	Manage embedded index	내장 색인 관리
+	Console	콘솔
+	Document JavaScripts	문서 JavaScript
+	Document actions	문서 동작
+	Summarize	요약
+	Ask about this document	이 문서에 관해 질문
+	Translate	번역
+	Tools panel side	도구 패널 위치
+	Documents and view	문서 및 보기
+	Default workspace mode	기본 작업 모드
+	Used when opening PDFs. An explicit launch or control mode takes precedence for the session.	PDF를 열 때 적용합니다. 실행 옵션이나 제어 명령으로 지정한 모드가 있으면 해당 설정이 우선합니다.
+	Default page display	기본 페이지 표시
+	Default zoom	기본 확대/축소
+	Used when a PDF doesn't ask for a layout or zoom. Continuous scrolling never snaps between pages.	PDF에 페이지 배치나 확대 비율이 지정되지 않았을 때 적용합니다. 연속 스크롤에서는 페이지 사이를 부드럽게 이동합니다.
+	For page sizes and margins.	페이지 크기와 여백에 사용합니다.
+	Reopen the files that were open when PdfCraft last closed	종료할 때 열려 있던 파일 다시 열기
+	Reload documents when their files change on disk	파일이 변경되면 문서 다시 불러오기
+	Mouse wheel scroll speed	마우스 휠 스크롤 속도
+	Reading colours	읽기 색상
+	Replace document colours	문서 색상 바꾸기
+	Page background	페이지 배경
+	Only change the colour of black text or line art	검은색 텍스트나 선의 색상만 변경
+	Change the colour of line art as well as text	텍스트와 선의 색상 모두 변경
+	Colours are remapped while rendering; the document itself never changes.	화면에 표시되는 색상만 바뀌며 문서 자체는 변경되지 않습니다.
+	Scripts run in a sandbox without file or network access. A script that asks to open a web page needs your permission first. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	스크립트는 파일이나 네트워크에 접근할 수 없는 격리된 환경에서 실행됩니다. 웹페이지를 열려면 먼저 사용자의 허락이 필요합니다. JavaScript를 꺼도 Acrobat의 표준 서식, 유효성 검사 및 계산 기능은 작동합니다.
+	Date format	날짜 형식
+	Fill & Sign dates	입력 및 서명 날짜
+	Pattern	형식
+	Today: {date}	오늘: {date}
+	Language	언어
+	Same as interface ({language})	프로그램 언어와 동일({language})
+	yyyy or yy year · m or mm month · mmm or mmmm month name · d or dd day · ddd or dddd weekday. H, h, M, s and t are time letters and can't be used on their own: put {escape} before a letter to show it as is.	yyyy 또는 yy: 연도 · m 또는 mm: 월 · mmm 또는 mmmm: 월 이름 · d 또는 dd: 일 · ddd 또는 dddd: 요일. H, h, M, s, t는 시간 기호이므로 단독으로 사용할 수 없습니다. 문자 그대로 표시하려면 앞에 {escape}를 넣으세요.
+	Black on white	흰 바탕에 검은 글자
+	White on black	검은 바탕에 흰 글자
+	Yellow on black	검은 바탕에 노란 글자
+	Green on black	검은 바탕에 초록 글자
+@plural	{n} page|{n} pages	{n}페이지
+key	Ctrl	Ctrl
+key	Shift	Shift
+key	Delete	Delete
+key	Esc	Esc
+key	Home	Home
+key	End	End
+key	Space	스페이스
+	Tools	도구
+	Ready	사용 가능
+	Coming in milestone	예정된 개발 단계
+	Coming in milestone {m}. Items marked Ready work today.	개발 단계 {m}에서 제공할 예정입니다. 사용 가능으로 표시된 항목은 지금 사용할 수 있습니다.
+	Drag the selection to move it. Esc clears the selection.	선택한 개체를 끌어 이동하세요. Esc를 누르면 선택이 해제됩니다.
+	Shift-click to select several objects. Drag empty space to select an area.	Shift를 누른 채 클릭하면 여러 개체를 선택할 수 있습니다. 빈 공간을 끌면 영역을 선택합니다.
+	Select at most 1000 objects at a time.	한 번에 최대 1,000개의 개체를 선택할 수 있습니다.
+	Finish or discard the text being edited before selecting several objects.	여러 개체를 선택하려면 먼저 텍스트 편집을 완료하거나 취소하세요.
+	Move object	개체 이동
+	Move objects	개체 이동
+	Vertical text cannot be moved with this selection.	이 선택 방식으로는 세로쓰기 텍스트를 이동할 수 없습니다.
+	Text used as a clipping path cannot be moved with this selection.	클리핑 경로로 사용된 텍스트는 이 선택 방식으로 이동할 수 없습니다.
+	These objects could not be moved. Select them again and try a smaller move.	개체를 이동하지 못했습니다. 다시 선택한 후 이동 거리를 줄여 보세요.
+	This page contains objects that cannot be selected together.	이 페이지에는 함께 선택할 수 없는 개체가 있습니다.
+@plural	{n} object selected|{n} objects selected	개체 {n}개 선택됨
+	Font size:	글자 크기:
+	Font:	글꼴:
