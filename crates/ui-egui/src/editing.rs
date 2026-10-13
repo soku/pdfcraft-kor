@@ -509,7 +509,7 @@ impl PdfCraftApp {
             return true;
         }
         let author = self.comment_prefs.author.clone();
-        let edit = crate::fill_sign::typed(tb.page, tb.at, &text, tb.size, &author);
+        let edit = crate::fill_sign::typed_with_system_font(tb.page, tb.at, &text, tb.size, tb.font, tb.system_font.as_ref(), &author);
         if self.apply_edit(edit) {
             if let Some(view) = self.views.get_mut(i) {
                 view.fill_text = None;

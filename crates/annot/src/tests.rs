@@ -495,7 +495,11 @@ fn fill_and_sign_items_are_drawn() {
         let style = Style::default_for(&shape);
         add_annotation(doc, &NewAnnotation { page: 1, shape, style, contents: contents.into(), author: "Ada".into() }, &meta("x")).unwrap()
     };
-    let t = add(&mut doc, Shape::Typewriter { rect: [100.0, 700.0, 200.0, 716.0], font_size: 11.0 }, "Ada Lovelace");
+    let t = add(
+        &mut doc,
+        Shape::Typewriter { rect: [100.0, 700.0, 200.0, 716.0], font_size: 11.0, font: Default::default(), program: None },
+        "Ada Lovelace",
+    );
     let marks: Vec<usize> = [FillMark::Check, FillMark::Cross, FillMark::Dot, FillMark::Line]
         .into_iter()
         .enumerate()
@@ -1175,7 +1179,7 @@ fn comment_text_the_standard_fonts_cannot_draw_is_kept_and_marked() {
     assert_eq!(text(&list(&doc, 0)[t], b"Contents"), "签名 Ada");
     assert!(ap_content(&doc, &list(&doc, 0)[t]).contains("(?? Ada)"), "{}", ap_content(&doc, &list(&doc, 0)[t]));
     assert_eq!(mark(&doc, t), Some('签'));
-    let typed = Shape::Typewriter { rect: [100.0, 700.0, 200.0, 716.0], font_size: 11.0 };
+    let typed = Shape::Typewriter { rect: [100.0, 700.0, 200.0, 716.0], font_size: 11.0, font: Default::default(), program: None };
     let f = add_annotation(
         &mut doc,
         &NewAnnotation { page: 0, style: Style::default_for(&typed), shape: typed, contents: "张三".into(), author: "Ada".into() },
@@ -1272,4 +1276,47 @@ fn cached_appearances_are_reused_while_annotations_are_unchanged() {
     let [a, b] = [&first, &second].map(|copy| ap_content(copy, &list(copy, 0)[idx]));
     assert!(!a.is_empty());
     assert_eq!(a, b, "the reused appearance is byte-identical");
+}
+
+#[test]
+fn typewriter_font_survives_save_and_restyle() {
+    for font in OverlayFont::ALL {
+        let mut doc = fixture();
+        let shape = Shape::Typewriter { rect: [20.0, 100.0, 250.0, 140.0], font_size: 18.0, font, program: None };
+        let mut annotation = new(1, shape);
+        annotation.contents = "Wide WWW iii".into();
+        let index = add_annotation(&mut doc, &annotation, &meta("font")).unwrap();
+        set_style(&mut doc, 1, index, Some([1.0, 0.0, 0.0]), None, None, None, &meta("restyle")).unwrap();
+        let doc = reopen(&doc);
+        let all = list(&doc, 1);
+        let d = &all[index];
+        assert!(text(d, b"DA").contains(&format!("/{} 18 Tf", font.resource())));
+        assert!(text(d, b"DS").contains(font.base_name()));
+        let ap = doc.resolve(d.get(b"AP").unwrap());
+        let stream = doc.resolve(ap.as_dict().unwrap().get(b"N").unwrap());
+        let Object::Stream(stream) = &*stream else { panic!("appearance stream") };
+        let resources = doc.resolve(stream.dict.get(b"Resources").unwrap());
+        let fonts = doc.resolve(resources.as_dict().unwrap().get(b"Font").unwrap());
+        let face = doc.resolve(fonts.as_dict().unwrap().get(b"Helv").unwrap());
+        assert_eq!(face.as_dict().unwrap().name(b"BaseFont"), Some(font.base_name().as_bytes()));
+    }
+}
+
+#[test]
+fn selected_font_program_survives_save_and_restyle() {
+    let mut doc = fixture();
+    let bytes = Arc::new(pdfcraft_fonts::INTER_REGULAR.to_vec());
+    let shape = Shape::Typewriter { rect: [20.0, 100.0, 250.0, 140.0], font_size: 18.0, font: OverlayFont::Helvetica, program: Some(bytes) };
+    let mut annotation = new(1, shape);
+    annotation.contents = "Custom font".into();
+    let index = add_annotation(&mut doc, &annotation, &meta("selected")).unwrap();
+    set_style(&mut doc, 1, index, Some([0.0, 0.0, 1.0]), None, None, None, &meta("colour")).unwrap();
+    let doc = reopen(&doc);
+    let all = list(&doc, 1);
+    let d = &all[index];
+    assert!(d.contains(b"PCTextFont"));
+    assert!(pdfcraft_fonts::undrawn_mark(d).is_none());
+    assert!(ap_content(&doc, d).contains("<0001> Tj"));
+    assert!(!ap_content(&doc, d).contains("/Helv"));
+    assert_eq!(text(d, b"Contents"), "Custom font");
 }

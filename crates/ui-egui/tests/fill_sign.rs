@@ -149,7 +149,7 @@ fn fill_text_size_controls_new_text_and_survives_settings_restore() {
     let mut h = harness();
     h.state_mut().execute("sign.fill.text");
     h.run_steps(2);
-    h.get_by_label("Font size:");
+    h.state_mut().set_option("fill_text_font", "Courier").unwrap();
     h.state_mut().fill_text_size = 24.0;
     click(&mut h, 50.0, 250.0);
     assert_eq!(h.state().views[0].fill_text.as_ref().map(|t| t.size), Some(24.0));
@@ -163,6 +163,7 @@ fn fill_text_size_controls_new_text_and_survives_settings_restore() {
     let settings = h.state().persist();
     let mut restored = PdfCraftApp::new();
     restored.restore(&settings);
+    assert_eq!(restored.fill_text_font, pdfcraft_engine::OverlayFont::Courier);
     assert_eq!(restored.fill_text_size, 24.0);
     restored.restore(r#"{"fill_text_size":1000000}"#);
     assert_eq!(restored.fill_text_size, 24.0, "invalid settings do not change the size");
@@ -971,7 +972,8 @@ fn saving_flattens_fill_and_sign_only_when_the_preference_is_on() {
     app.open_bytes("form.pdf", None, FIXTURE.to_vec()).unwrap();
     let id = app.views[0].id;
     app.session.apply(id, mark).unwrap();
-    app.views[0].fill_text = Some(TypeBox { page: 0, at: [40.0, 200.0], text: "Typed".into(), size: 10.0, focus: false });
+    app.views[0].fill_text =
+        Some(TypeBox { page: 0, at: [40.0, 200.0], text: "Typed".into(), size: 10.0, font: Default::default(), system_font: None, focus: false });
     let kept = dir.join("kept.pdf");
     app.save_override = Some(kept.to_string_lossy().into_owned());
     assert!(app.save_active(SaveTarget::InPlace));
@@ -982,7 +984,8 @@ fn saving_flattens_fill_and_sign_only_when_the_preference_is_on() {
     assert!(texts.iter().any(|t| t == "Typed"), "an open type box is saved: {texts:?}");
     assert_eq!(reopened.session.get(reopened.views[0].id).unwrap().info.annotations.len(), 2, "the check mark stays too");
 
-    app.views[0].fill_text = Some(TypeBox { page: 0, at: [40.0, 160.0], text: "More".into(), size: 10.0, focus: false });
+    app.views[0].fill_text =
+        Some(TypeBox { page: 0, at: [40.0, 160.0], text: "More".into(), size: 10.0, font: Default::default(), system_font: None, focus: false });
     app.flatten_fill_sign_on_save = true;
     let flat = dir.join("flat.pdf");
     app.save_override = Some(flat.to_string_lossy().into_owned());

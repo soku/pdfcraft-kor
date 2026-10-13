@@ -37,7 +37,7 @@ add a language: [localization.md](localization.md). Summary in [ROADMAP.md](../R
 | Indonesian | `id` | 0 | none | Latin | no | none | no | 3–5 |
 | Japanese | `ja` | 2,123 (99.1%) | dialogs and tooltips; no help | BIZ UDPGothic from craft-fonts; IME patched on macOS, Windows, X11, Wayland; vertical text renders but can't be edited | no | partial | yes | 4–8 |
 | German | `de` | 2,128 (99.3%) | dialogs and tooltips; no help | Latin | community, in progress (#828: terminology, clipping) | partial | yes | 2–4 |
-| Korean | `ko` | 549 | partial: commands, tools, shell, Home and common preferences | Installed Hangul fallback on desktop; no bundled Hangul UI face or web fallback | no | partial | yes | not re-estimated |
+| Korean | `ko` | 551 | partial: commands, tools, shell, Home and common preferences | Installed Hangul fallback on desktop; no bundled Hangul UI face or web fallback | no | partial | yes | not re-estimated |
 | Vietnamese | `vi` | 0 | none | Latin with stacked diacritics; bundled Inter covers them (not tested) | no | none | no | 3–5 |
 
 **Prior localization baseline ≈ 59% (2026-10-10)**: the mean over the twelve, counting a catalog's percentage but only

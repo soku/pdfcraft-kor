@@ -143,6 +143,10 @@ Ranked; detail and the full milestone table in [docs/roadmap.md](docs/roadmap.md
 
 ## Progress log
 
+- 2026-10-13: M5 — Fill & Sign size step buttons and searchable installed-font selection; explicit selected faces are embedded into text annotations, including collection faces. Unsupported embedding is reported.
+
+- 2026-10-13: M3 — Keep the floating Fill & Sign toolbar compact; put font size in its flyout and size empty signature menus to their rows.
+
 - 2026-10-13: M3 — Korean file-name font fallback, partial Korean UI (549 entries), and macOS Auto language detection ignoring neutral launcher locales.
 
 - **2026-10-12 (M10, file formats):** Create PDF reads BigTIFF scans; a malformed GIF header is no longer detected as an image only to fail conversion. file-format-parity.md now lists XDP data import/export for XFA forms (already shipped under `form.xfa-data`) separately from opening `.xdp` as a document. Estimates unchanged.

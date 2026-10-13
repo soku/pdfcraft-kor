@@ -91,7 +91,7 @@ Korean locales (`ko`, `ko-KR`, `ko_KR.UTF-8`) select 한국어 in Auto mode. Aut
 at app startup; restart after changing the system language. A manually selected interface
 language still takes precedence. Unsupported languages fall back to English.
 
-The Korean catalog currently contains 549 entries covering all registered commands, tool
+The Korean catalog currently contains 551 entries covering all registered commands, tool
 catalog groups and items, the main shell, Home, and common preferences. Other dialog and
 engine messages still fall back to English; this is partial localization, not full coverage.
 Month and weekday names and keyboard labels also support Korean.

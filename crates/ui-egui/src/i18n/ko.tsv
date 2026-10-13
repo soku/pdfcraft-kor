@@ -551,3 +551,5 @@ key	Space	스페이스
 	These objects could not be moved. Select them again and try a smaller move.	개체를 이동하지 못했습니다. 다시 선택한 후 이동 거리를 줄여 보세요.
 	This page contains objects that cannot be selected together.	이 페이지에는 함께 선택할 수 없는 개체가 있습니다.
 @plural	{n} object selected|{n} objects selected	개체 {n}개 선택됨
+	Font size:	글자 크기:
+	Font:	글꼴:

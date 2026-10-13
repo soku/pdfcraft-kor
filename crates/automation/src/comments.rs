@@ -477,6 +477,28 @@ impl Automation {
         if sensitivity.is_some() && !scan {
             return Err(ToolError::InvalidArgs("sensitivity is only for scan: true".into()));
         }
+        let font = match a.opt_str("font")? {
+            None | Some("Helvetica") => pdfcraft_engine::OverlayFont::Helvetica,
+            Some("Times-Roman") => pdfcraft_engine::OverlayFont::Times,
+            Some("Courier") => pdfcraft_engine::OverlayFont::Courier,
+            Some(_) => return Err(ToolError::InvalidArgs("font must be Helvetica, Times-Roman, or Courier".into())),
+        };
+        if a.opt_str("font")?.is_some() && !matches!(kind, "text" | "date") {
+            return Err(ToolError::InvalidArgs("font is only for type text or date".into()));
+        }
+        let program = if let Some(path) = a.opt_str("font_path")? {
+            if !matches!(kind, "text" | "date") {
+                return Err(ToolError::InvalidArgs("font_path is only for text or date".into()));
+            }
+            let path = self.resolve(path, false)?;
+            let index = a.opt_num("font_index")?.unwrap_or(0.0);
+            if !index.is_finite() || index.fract() != 0.0 || !(0.0..256.0).contains(&index) {
+                return Err(ToolError::InvalidArgs("font_index must be 0–255".into()));
+            }
+            Some(std::sync::Arc::new(pdfcraft_engine::text_fonts::selected_program(&path, index as u32).map_err(ToolError::InvalidArgs)?))
+        } else {
+            None
+        };
         let requested_size = a.opt_num("font_size")?;
         if requested_size.is_some() && !matches!(kind, "text" | "date") {
             return Err(ToolError::InvalidArgs("font_size is only for type text or date".into()));
@@ -508,23 +530,33 @@ impl Automation {
             let edit = image.edit(page, &info, at, kind == "initials", &author).ok_or_else(|| ToolError::InvalidArgs("at must be finite".into()))?;
             return self.apply(a, edit);
         }
-        let text_at = |t: &str| {
-            let w = (pdfcraft_engine::annot_text::text_width(t, size) + 8.0).clamp(20.0, 600.0);
-            let h = size * 1.2 + 6.0;
-            Shape::Typewriter { rect: [at[0], at[1] - h, at[0] + w, at[1]], font_size: size }
+        let text_at = |t: &str| -> Result<Shape> {
+            let rect = if let Some(bytes) = &program {
+                pdfcraft_engine::text_fonts::selected_text_rect(bytes, t, size, at).map_err(ToolError::InvalidArgs)?
+            } else {
+                let w = (font.metrics().text_width(t, size) + 8.0).clamp(20.0, 600.0);
+                let h = size * 1.2 + 6.0;
+                [at[0], at[1] - h, at[0] + w, at[1]]
+            };
+            Ok(Shape::Typewriter { rect, font_size: size, font, program: program.clone() })
         };
         let (shape, contents) = match kind {
             "text" => {
                 let t = a.str("text")?.to_string();
-                (text_at(&t), t)
+                (text_at(&t)?, t)
             }
             "date" => {
                 let lang = a.opt_str("language")?;
                 if let Some(l) = lang.filter(|l| pdfcraft_engine::dates::date_language(l).is_none()) {
                     return Err(ToolError::InvalidArgs(format!("unknown date language {l:?} (see fill_sign_date_format)")));
                 }
-                let t = self.session.today_text_for_pdf(a.opt_str("format")?, lang).map_err(ToolError::InvalidArgs)?;
-                (text_at(&t), t)
+                let t = if program.is_some() {
+                    self.session.today_text(a.opt_str("format")?, lang)
+                } else {
+                    self.session.today_text_for_pdf(a.opt_str("format")?, lang)
+                }
+                .map_err(ToolError::InvalidArgs)?;
+                (text_at(&t)?, t)
             }
             // A typed signature or initials in the script font, left edge at `at`, upright as displayed.
             kind @ ("signature" | "initials") => {

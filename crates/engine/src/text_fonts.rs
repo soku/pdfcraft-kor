@@ -76,3 +76,25 @@ pub fn discover(roots: &[PathBuf]) -> Vec<FontFile> {
 fn font_extension(path: &Path) -> bool {
     path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("ttf") || e.eq_ignore_ascii_case("otf"))
 }
+
+/// Load a face explicitly selected for a document, including a face in a collection.
+/// Unlike the open-asset catalogue, this uses the selected font's embedding permission flags.
+pub fn selected_program(path: &Path, index: u32) -> Result<Vec<u8>, String> {
+    let bytes = pdfcraft_fonts::installed::load(&pdfcraft_fonts::installed::Face { path: path.into(), index, name: String::new() })?;
+    pdfcraft_fonts::embedding::validate(&bytes)?;
+    Ok(bytes)
+}
+
+/// Size a selected-font text annotation with the same shaping and wrapping as its appearance.
+pub fn selected_text_rect(bytes: &[u8], text: &str, size: f64, at: [f64; 2]) -> Result<[f64; 4], String> {
+    let mut longest = 0.0f64;
+    for line in text.lines() {
+        longest = longest.max(pdfcraft_fonts::source_shaping::shape(bytes, line)?.advance * size);
+    }
+    let width = (longest + 8.0).clamp(40.0, 600.0);
+    let lines = pdfcraft_fonts::wrap_with(text, size, width - 4.0, |line, size| {
+        pdfcraft_fonts::source_shaping::shape(bytes, line).map_or(f64::INFINITY, |r| r.advance * size)
+    });
+    let height = lines.len().max(1) as f64 * size * 1.2 + 6.0;
+    Ok([at[0], at[1] - height, at[0] + width, at[1]])
+}
