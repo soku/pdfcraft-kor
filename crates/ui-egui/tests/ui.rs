@@ -681,7 +681,12 @@ fn dropping_a_pdf_on_the_window_opens_it() {
     assert!(h.state().views.is_empty());
     let file: egui::DroppedFileHandle = std::sync::Arc::new(Dropped { path: "dropped.pdf".into(), bytes: FIXTURE.to_vec() });
     h.input_mut().dropped_files.push(file);
-    h.run_steps(3);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while h.state().views.is_empty() && std::time::Instant::now() < deadline {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    h.run_steps(2); // Let the new tab reach the accessibility tree.
     assert_eq!(h.state().views.len(), 1, "the dropped PDF opens in a tab");
     h.get_by_label_contains("dropped.pdf");
 }

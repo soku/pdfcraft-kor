@@ -1195,6 +1195,9 @@ fn selection_wheel_does_not_scroll_behind_preferences() {
 
 #[test]
 fn selection_mouse_wheel_resumes_after_point_scrolling() {
+    // Normal wheel distance is platform-dependent (macOS differs from Windows/Linux).
+    let normal = selection_wheel_delta(egui::MouseWheelUnit::Line, 1.0, true, true);
+    assert!(normal > 1.0);
     for delay in [1, 16, 40] {
         let (mut h, view, _) = selection_wheel_harness();
         let start = h.state().views[view].page_screen_rect(0).unwrap().top();
@@ -1215,6 +1218,6 @@ fn selection_mouse_wheel_resumes_after_point_scrolling() {
         h.run_steps(40);
         let after = h.state().views[view].page_screen_rect(0).unwrap().top();
         eprintln!("Point-to-Line delay={delay}: point={}, line={}", start - before, before - after);
-        assert!(before - after > 50.0, "Line input must resume after Point: {before} -> {after}");
+        assert!(before - after >= normal - 1.0, "Line input must resume after Point: {before} -> {after}, normal={normal}");
     }
 }

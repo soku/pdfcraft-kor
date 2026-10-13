@@ -130,6 +130,15 @@ fn click_link_at(h: &mut Harness<'static, PdfCraftApp>, y: f32) {
     click_at(h, at);
 }
 
+fn wait_for_document(h: &mut Harness<'static, PdfCraftApp>, ready: impl Fn(&PdfCraftApp) -> bool) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !ready(h.state()) && std::time::Instant::now() < deadline {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(ready(h.state()), "document worker did not complete within 10 seconds");
+}
+
 fn click_remote_link(h: &mut Harness<'static, PdfCraftApp>) {
     click_link(h);
 }
@@ -175,6 +184,7 @@ fn a_local_gotor_link_opens_in_a_tab_and_applies_its_destination() {
     std::fs::write(dir.join("target.pdf"), linked_pages(2, None)).unwrap();
     let mut h = remote_harness(Some(dir.join("source.pdf").to_string_lossy().into_owned()), "target.pdf", "[1 /FitH 200]");
     click_remote_link(&mut h);
+    wait_for_document(&mut h, |app| app.views.len() == 2);
     assert_eq!(h.state().views.len(), 2);
     assert_eq!(h.state().active, Some(1));
     assert_eq!(h.state().views[1].current, 1, "the remote page destination is applied");
@@ -191,16 +201,20 @@ fn a_remote_destination_survives_password_retries_and_cancel_opens_no_tab() {
 
     let mut h = remote_harness(Some(dir.join("source.pdf").to_string_lossy().into_owned()), "target.pdf", "[1 /Fit]");
     click_remote_link(&mut h);
+    wait_for_document(&mut h, |app| app.password_prompt.is_some());
     assert!(h.state().password_prompt.is_some());
     assert_eq!(h.state().views.len(), 1);
     h.state_mut().submit_password(Some("wrong-password".into()));
+    wait_for_document(&mut h, |app| app.password_prompt.as_ref().is_some_and(|p| p.error.is_some()));
     assert!(h.state().password_prompt.as_ref().is_some_and(|p| p.error.is_some()));
     h.state_mut().submit_password(Some("test-password".into()));
+    wait_for_document(&mut h, |app| app.views.len() == 2);
     assert_eq!(h.state().views.len(), 2);
     assert_eq!(h.state().views[1].current, 1, "the destination survives a wrong-password retry");
 
     let mut cancelled = remote_harness(Some(dir.join("source.pdf").to_string_lossy().into_owned()), "target.pdf", "[1 /Fit]");
     click_remote_link(&mut cancelled);
+    wait_for_document(&mut cancelled, |app| app.password_prompt.is_some());
     cancelled.state_mut().submit_password(None);
     assert_eq!(cancelled.state().views.len(), 1, "cancelling does not leave a half-open target tab");
 }

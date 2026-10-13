@@ -143,6 +143,10 @@ Ranked; detail and the full milestone table in [docs/roadmap.md](docs/roadmap.md
 
 ## Progress log
 
+- 2026-10-13: M3 — Defer startup documents until pending opens/password checks finish; synchronize password, picker, drop, and recovery UI tests with worker completion.
+
+- 2026-10-13: M3 — Fork-owned Windows x64 packaging; preserve tool commands across asynchronous file opening and wait for completion in UI regression tests.
+
 - 2026-10-13: M5 — Fill & Sign size step buttons and searchable installed-font selection; explicit selected faces are embedded into text annotations, including collection faces. Unsupported embedding is reported.
 
 - 2026-10-13: M3 — Keep the floating Fill & Sign toolbar compact; put font size in its flyout and size empty signature menus to their rows.
