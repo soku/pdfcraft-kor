@@ -1671,7 +1671,11 @@ fn files_dropped_before_the_pointer_is_known_wait_for_it() {
 fn files_dropped_outside_the_page_grid_still_open_as_documents() {
     let mut h = harness(2, |_| {});
     drop_files(&mut h, vec![Dropped("other.pdf", fixture(1))]);
-    h.run_steps(3);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while h.state().views.len() < 2 && std::time::Instant::now() < deadline {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     assert_eq!(h.state().views.len(), 2);
     assert_eq!(texts_of(h.state(), 0), ["Page 1", "Page 2"]);
 }
@@ -1907,7 +1911,12 @@ fn password_prompt_opens_and_security_tab_reports_the_details() {
     field.type_text("pw");
     h.run_steps(2);
     h.key_press(Key::Enter);
-    h.run_steps(4);
+    // Password verification runs on the document worker, not within a fixed frame count.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while h.state().views.is_empty() && std::time::Instant::now() < deadline {
+        h.run_steps(1);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     assert_eq!(h.state().views.len(), 1);
     h.state_mut().set_option("dialog", "properties").unwrap();
     h.run_steps(2);
