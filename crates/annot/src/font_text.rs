@@ -23,6 +23,17 @@ pub(crate) fn build(doc: &mut Document, d: &Dict) -> Result<Stream, AnnotError> 
     if !values.iter().all(|x| x.is_finite() && x.abs() < 1e7) || x1 <= x0 || y1 <= y0 {
         return Err(AnnotError::Invalid("invalid text rectangle".into()));
     }
+    // Match the standard-font appearance: draw upright in displayed coordinates,
+    // then map the form back into the annotation's user-space rectangle.
+    let turn = appearance::text_turn(d);
+    let (drawing_rect, matrix) = if turn == 0 {
+        ([*x0, *y0, *x1, *y1], None)
+    } else {
+        let (rw, rh) = (x1 - x0, y1 - y0);
+        let (width, height) = if matches!(turn, 90 | 270) { (rh, rw) } else { (rw, rh) };
+        ([0.0, 0.0, width, height], Some(pdfcraft_model::view_matrix_for(turn, [*x0, *y0, *x1, *y1])))
+    };
+    let [x0, y0, x1, y1] = &drawing_rect;
     let (color, size) = appearance::parse_da(d);
     let width = (x1 - x0 - 4.0).max(1.0);
     let mut failed = None;
@@ -84,5 +95,8 @@ pub(crate) fn build(doc: &mut Document, d: &Dict) -> Result<Stream, AnnotError> 
     dict.set(b"Subtype".to_vec(), Object::name("Form"));
     dict.set(b"BBox".to_vec(), num_array(&[*x0, *y0, *x1, *y1]));
     dict.set(b"Resources".to_vec(), Object::Dict(resources));
+    if let Some(matrix) = matrix {
+        dict.set(b"Matrix".to_vec(), num_array(&matrix));
+    }
     Ok(Stream::from_raw(dict, content.into_bytes()))
 }

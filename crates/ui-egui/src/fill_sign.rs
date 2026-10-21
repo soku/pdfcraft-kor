@@ -103,6 +103,22 @@ impl SigDraft {
         }
     }
 
+    /// Take back the last drawn stroke (and any dot-less empty one a bare click left behind it).
+    /// Returns whether a visible stroke was removed.
+    pub fn undo_stroke(&mut self) -> bool {
+        while let Some(s) = self.strokes.pop() {
+            if s.len() > 1 {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// The Draw tab is showing (not Type, Image or Scan).
+    fn draw_tab(&self) -> bool {
+        self.drawing && !self.image_mode && !self.scan_mode
+    }
+
     fn ready(&self) -> bool {
         if self.scan_mode {
             // A preview made while the frame or slider is still moving is not the result.
@@ -480,14 +496,15 @@ fn new(page: usize, shape: Shape, contents: String, author: &str) -> Edit {
 }
 
 /// A typewriter annotation sized to its text.
-pub fn typed(page: usize, at: [f64; 2], text: &str, size: f64, author: &str) -> Edit {
-    typed_with_font(page, at, text, size, pdfcraft_engine::OverlayFont::Helvetica, author)
+pub fn typed(page: usize, at: [f64; 2], text: &str, size: f64, rotation: i64, author: &str) -> Edit {
+    typed_with_system_font(page, at, text, size, pdfcraft_engine::OverlayFont::Helvetica, None, rotation, author)
 }
 
 pub fn typed_with_font(page: usize, at: [f64; 2], text: &str, size: f64, font: pdfcraft_engine::OverlayFont, author: &str) -> Edit {
-    typed_with_system_font(page, at, text, size, font, None, author)
+    typed_with_system_font(page, at, text, size, font, None, 0, author)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn typed_with_system_font(
     page: usize,
     at: [f64; 2],
@@ -495,6 +512,7 @@ pub fn typed_with_system_font(
     size: f64,
     font: pdfcraft_engine::OverlayFont,
     system: Option<&crate::fill_fonts::SelectedFont>,
+    rotation: i64,
     author: &str,
 ) -> Edit {
     let measure = |s: &str, size| {
@@ -505,7 +523,7 @@ pub fn typed_with_system_font(
     let width = (text.lines().map(|line| measure(line, size)).fold(0.0, f64::max) + 8.0).clamp(40.0, 300.0);
     let lines = pdfcraft_fonts::wrap_with(text, size, width - 4.0, measure).len().max(1);
     let height = lines as f64 * size * 1.2 + 6.0;
-    let rect = [at[0], at[1] - height, at[0] + width, at[1]];
+    let rect = pdfcraft_engine::text_box_at(rotation, at, width, height).unwrap_or([at[0], at[1] - height, at[0] + width, at[1]]);
     new(page, Shape::Typewriter { rect, font_size: size, font, program: system.map(|f| f.bytes.clone()) }, text.to_string(), author)
 }
 
@@ -727,13 +745,16 @@ pub(crate) fn page_input(
     if !resp.clicked() {
         return None;
     }
+    // Typed text starts a little above the click, as displayed.
+    let rotation = i64::from(p.rotation);
+    let top = pdfcraft_engine::displayed_offset(rotation, at, 0.0, text_size * 0.6);
     match tool {
         FillTool::Text => {
             // Clicking away from an open box commits it: the page sees this click before the box
             // sees its lost focus, so replacing the box first would drop what was typed.
             let open = view.fill_text.replace(TypeBox {
                 page,
-                at: [at[0], at[1] + text_size * 0.6],
+                at: top,
                 text: String::new(),
                 size: text_size,
                 font: text_font,
@@ -741,19 +762,20 @@ pub(crate) fn page_input(
                 focus: true,
             });
             open.filter(|tb| !tb.text.trim().is_empty()).map(|tb| {
-                FillAction::Edit(Box::new(typed_with_system_font(tb.page, tb.at, tb.text.trim(), tb.size, tb.font, tb.system_font.as_ref(), author)))
+                FillAction::Edit(Box::new(typed_with_system_font(
+                    tb.page,
+                    tb.at,
+                    tb.text.trim(),
+                    tb.size,
+                    tb.font,
+                    tb.system_font.as_ref(),
+                    crate::comments::page_rotation(info, tb.page),
+                    author,
+                )))
             })
         }
         FillTool::Date => Some(match date_text {
-            Ok(text) => FillAction::Edit(Box::new(typed_with_system_font(
-                page,
-                [at[0], at[1] + text_size * 0.6],
-                text,
-                text_size,
-                text_font,
-                system_font,
-                author,
-            ))),
+            Ok(text) => FillAction::Edit(Box::new(typed_with_system_font(page, top, text, text_size, text_font, system_font, rotation, author))),
             Err(why) => FillAction::Refused(why.clone()),
         }),
         FillTool::Signature => match signature {
@@ -833,7 +855,16 @@ pub(crate) fn type_box(ctx: &egui::Context, view: &mut DocView, info: &DocInfo, 
     if commit {
         let tb = view.fill_text.take()?;
         if !tb.text.trim().is_empty() {
-            return Some(typed_with_system_font(tb.page, tb.at, tb.text.trim(), tb.size, tb.font, tb.system_font.as_ref(), author));
+            return Some(typed_with_system_font(
+                tb.page,
+                tb.at,
+                tb.text.trim(),
+                tb.size,
+                tb.font,
+                tb.system_font.as_ref(),
+                crate::comments::page_rotation(info, tb.page),
+                author,
+            ));
         }
     }
     None
@@ -918,6 +949,11 @@ pub(crate) fn signature_pad(
         return (apply, cancel, false);
     }
     ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Draw your {what} below."), &[("what", what)])).color(t.text_muted));
+    // The dialog is modal, so ⌘Z / Ctrl+Z here can only mean the last stroke (the document's own
+    // undo is blocked while it is open).
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z)) {
+        d.undo_stroke();
+    }
     let strokes = &mut d.strokes;
     let (rect, resp) = ui.allocate_exact_size(vec2(460.0, 150.0), Sense::drag());
     let painter = ui.painter_at(rect);
@@ -1141,6 +1177,9 @@ fn pad_buttons(ui: &mut egui::Ui, d: &mut SigDraft) -> (bool, bool) {
     ui.add_space(10.0);
     let (mut apply, mut cancel) = (false, false);
     ui.horizontal(|ui| {
+        if d.draw_tab() && ui.add_enabled(!d.strokes.is_empty(), egui::Button::new(tl!("Undo"))).clicked() {
+            d.undo_stroke();
+        }
         if ui.button(tl!("Clear")).clicked() {
             d.strokes.clear();
             d.text.clear();
@@ -1327,6 +1366,36 @@ impl crate::PdfCraftApp {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn undo_removes_the_last_stroke_and_skips_empty_ones() {
+        let mut d = super::SigDraft { drawing: true, ..Default::default() };
+        assert!(!d.undo_stroke());
+        d.strokes = vec![vec![[0.1, 0.1], [0.2, 0.2]], vec![[0.3, 0.3], [0.4, 0.4]], vec![[0.5, 0.5]], vec![]];
+        assert!(d.undo_stroke());
+        assert_eq!(d.strokes.len(), 1);
+        assert!(d.undo_stroke());
+        assert!(d.strokes.is_empty());
+        assert!(!d.undo_stroke());
+    }
+
+    #[test]
+    fn long_signature_previews_have_clear_margins() {
+        for text in ["Alexandria Catherine Elizabeth Montgomery-Wellington", "Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg"] {
+            for [w, h] in [[920, 300], [480, 104]] {
+                let image = super::script_preview(text, w, h);
+                assert!(image.pixels.iter().any(|p| p.a() > 0));
+                for x in 0..w {
+                    assert_eq!(image[(x, 0)].a(), 0);
+                    assert_eq!(image[(x, h - 1)].a(), 0);
+                }
+                for y in 0..h {
+                    assert_eq!(image[(0, y)].a(), 0);
+                    assert_eq!(image[(w - 1, y)].a(), 0);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn size_arrows_and_font_selector_work() {
         use egui_kittest::kittest::Queryable;
         let mut h = egui_kittest::Harness::new_ui_state(
@@ -1354,23 +1423,5 @@ mod tests {
         h.get_by_label("Courier (PDF)").click();
         h.run();
         assert_eq!(h.state().1, pdfcraft_engine::OverlayFont::Courier);
-    }
-
-    #[test]
-    fn long_signature_previews_have_clear_margins() {
-        for text in ["Alexandria Catherine Elizabeth Montgomery-Wellington", "Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg Jg"] {
-            for [w, h] in [[920, 300], [480, 104]] {
-                let image = super::script_preview(text, w, h);
-                assert!(image.pixels.iter().any(|p| p.a() > 0));
-                for x in 0..w {
-                    assert_eq!(image[(x, 0)].a(), 0);
-                    assert_eq!(image[(x, h - 1)].a(), 0);
-                }
-                for y in 0..h {
-                    assert_eq!(image[(0, y)].a(), 0);
-                    assert_eq!(image[(w - 1, y)].a(), 0);
-                }
-            }
-        }
     }
 }

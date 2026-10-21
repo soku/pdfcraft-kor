@@ -538,6 +538,7 @@ impl Automation {
                 let h = size * 1.2 + 6.0;
                 [at[0], at[1] - h, at[0] + w, at[1]]
             };
+            let rect = pdfcraft_engine::text_box_at(i64::from(info.rotation), at, rect[2] - rect[0], rect[3] - rect[1]).unwrap_or(rect);
             Ok(Shape::Typewriter { rect, font_size: size, font, program: program.clone() })
         };
         let (shape, contents) = match kind {
@@ -650,6 +651,12 @@ impl Automation {
             let fill = if f.eq_ignore_ascii_case("none") { None } else { Some(parse_color(f)?) };
             edits.push(Edit::FillAnnotation { page, index, fill });
         }
+        if let Some(size) = a.opt_num("font_size")? {
+            if !(1.0..=400.0).contains(&size) {
+                return Err(ToolError::InvalidArgs("font_size must be 1–400 pt".into()));
+            }
+            edits.push(Edit::FontSizeAnnotation { page, index, size });
+        }
         if let Some(r) = a.nums::<4>("rect")? {
             edits.push(Edit::ResizeAnnotation { page, index, rect: rect_to_user(&info, r) });
         }
@@ -658,7 +665,7 @@ impl Automation {
             edits.push(Edit::MoveAnnotation { page, index, dx: d[0] - o[0], dy: d[1] - o[1] });
         }
         if edits.is_empty() {
-            return Err(ToolError::InvalidArgs("nothing to change: pass contents, color, opacity, width, rect or move".into()));
+            return Err(ToolError::InvalidArgs("nothing to change: pass contents, color, opacity, width, fill, font_size, rect or move".into()));
         }
         let edit = if edits.len() == 1 { edits.remove(0) } else { Edit::Batch { label: "Edit comment".into(), edits } };
         self.apply(a, edit)
