@@ -553,3 +553,21 @@ key	Space	스페이스
 @plural	{n} object selected|{n} objects selected	개체 {n}개 선택됨
 	Font size:	글자 크기:
 	Font:	글꼴:
+	Word count…	단어 수…
+	Next tab	다음 탭
+	Previous tab	이전 탭
+	Previous view	이전 보기
+	Next view	다음 보기
+	Find untagged content	태그 없는 콘텐츠 찾기
+	Tag form fields	양식 필드에 태그 추가
+	Reverse pages	페이지 순서 뒤집기
+	Open this local PDF?	이 로컬 PDF를 열까요?
+	This document is trying to open a local file:	이 문서가 다음 로컬 파일을 열려고 합니다:
+	Only allow this if you trust the source document.	원본 문서를 신뢰할 수 있는 경우에만 허용하세요.
+	Allow	허용
+	The labels are in English: the signature's font can't draw them in this language.	서명 글꼴이 이 언어를 표시할 수 없어 항목 이름이 영어로 표시됩니다.
+	Digitally signed by	디지털 서명자
+	DN: 	고유 이름: 
+	Reason: 	이유: 
+	Location: 	위치: 
+	Date: 	날짜: 
